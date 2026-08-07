@@ -1,0 +1,16 @@
+.app {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.showcase {
+  display: grid;
+  grid-template-columns: minmax(340px, 30%) 1fr;
+  min-height: 640px;
+}
+
+@media (max-width: 900px) {
+  .showcase {
+    grid-template-columns: 1fr;
+  }
+}

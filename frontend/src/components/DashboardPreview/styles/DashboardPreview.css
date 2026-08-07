@@ -1,0 +1,18 @@
+.dashboard-preview {
+  background: var(--color-gray-50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 32px;
+  width: 100%;
+}
+
+.dashboard-preview__image {
+  width: 100%;
+  max-width: 1040px;
+  height: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-gray-200);
+  box-shadow: var(--shadow-lg);
+  display: block;
+}
