@@ -4,6 +4,8 @@ import { authorizeProject } from '../middleware/authorizeProject'
 import { createIssue } from '../services/issue_handler/createIssue'
 import { editIssue } from '../services/issue_handler/editIssue'
 import { getIssuesForProject } from '../services/issue_handler/getIssues'
+import { commitChisel } from '../services/chisel_handler/commitChisel'
+import Project from '../models/Project'
 import { Types } from 'mongoose'
 
 const router = Router()
@@ -64,6 +66,16 @@ router.post('/editIssue', authorizeProject, async (req: Request, res: Response) 
       assignedTo: assignedTo !== undefined ? (assignedTo ? new Types.ObjectId(assignedTo) : null) : undefined,
       status,
     })
+
+    if (issue.status === 'RESOLVED') {
+      const projectId = issue.project_id as unknown as Types.ObjectId
+      const project = await Project.findById(projectId).select('created_by')
+      await commitChisel({
+        projectId,
+        issueId: issue._id as unknown as Types.ObjectId,
+        commitAuthor: project?.created_by as unknown as Types.ObjectId,
+      })
+    }
 
     res.json(issue)
   } catch (error) {

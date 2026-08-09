@@ -101,7 +101,7 @@ function Navbar() {
                 v0.1 (July 2026) — Hackathon Launch
               </div>
               <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13.5px', color: 'var(--color-gray-700)', lineHeight: '1.7' }}>
-                <li>Commit &amp; verify workflow</li>
+                <li>Chisel &amp; verify workflow</li>
                 <li>Issue tracking &amp; assignment</li>
                 <li>3D BIM viewer</li>
                 <li>Demo account login</li>
@@ -277,7 +277,7 @@ function Navbar() {
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
                   >
                     <div style={{ fontWeight: 600, fontSize: '13px' }}>🎓 Getting Started Guide</div>
-                    <div style={{ fontSize: '11px', color: 'var(--color-gray-500)' }}>Your first commit in under 5 minutes</div>
+                    <div style={{ fontSize: '11px', color: 'var(--color-gray-500)' }}>Your first chisel in under 5 minutes</div>
                   </div>
 
                   <div 

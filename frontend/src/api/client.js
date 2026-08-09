@@ -79,6 +79,7 @@ export const api = {
     request('/api/issues/editIssue', { method: 'POST', body: data }),
 
   // Comments
+  getIssueComments: (issueId) => request(`/api/comments/issue/${issueId}`),
   createComment: (data) =>
     request('/api/comments/createComment', { method: 'POST', body: data }),
   editComment: (data) =>
@@ -86,9 +87,9 @@ export const api = {
   deleteComment: (commentId) =>
     request('/api/comments/deleteComment', { method: 'DELETE', body: { commentId } }),
 
-  // Chisels (commits)
+  // Chisels
   getProjectChisels: (projectId) => request(`/api/chisel/project/${projectId}`),
-  commitChisel: (data) =>
+  createChisel: (data) =>
     request('/api/chisel/commit', { method: 'POST', body: data }),
 
   // Blueprint (LLM)

@@ -15,7 +15,7 @@ import { api } from "../../api/client";
 import { sampleImageFor } from "../../utils/sampleImages";
 import DashboardLayout from "../../components/DashboardLayout/DashboardLayout.jsx";
 
-const tabs = ["Overview", "Issues", "Commits", "Files", "Team", "Settings"];
+const tabs = ["Overview", "Issues", "Chisels", "Files", "Team", "Settings"];
 
 // ------------------------------- HELPERS ------------------------------------
 
@@ -186,6 +186,11 @@ function ProjectHeader({ project, progress }) {
             </div>
           </div>
         </div>
+
+        <button className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-colors">
+          <Box size={16} />
+          3D View
+        </button>
       </div>
 
       <div className="relative w-full lg:w-[420px] h-56 rounded-xl overflow-hidden bg-slate-100 shrink-0">
@@ -305,23 +310,70 @@ function StatCards({ issues }) {
   );
 }
 
-function RecentChanges() {
+function RecentChanges({ chisels, projectId }) {
+  if (chisels.length === 0) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <h3 className="font-semibold text-slate-900">Recent Changes</h3>
+          <button className="text-sm text-slate-400 hover:text-slate-600">
+            View All
+          </button>
+        </div>
+        <div className="px-5 py-10 flex flex-col items-center justify-center text-center">
+          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+            <GitBranch size={20} className="text-slate-400" />
+          </div>
+          <p className="text-sm font-medium text-slate-700">No changes yet</p>
+          <p className="text-xs text-slate-400 mt-1">
+            Chiseled issues and changes will appear here.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white border border-slate-200 rounded-xl">
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
         <h3 className="font-semibold text-slate-900">Recent Changes</h3>
-        <button className="text-sm text-slate-400 hover:text-slate-600">
+        <Link
+          to={`/dashboard/${projectId}?tab=chisels`}
+          className="text-sm text-slate-400 hover:text-slate-600"
+        >
           View All
-        </button>
+        </Link>
       </div>
-      <div className="px-5 py-10 flex flex-col items-center justify-center text-center">
-        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-          <GitBranch size={20} className="text-slate-400" />
-        </div>
-        <p className="text-sm font-medium text-slate-700">No changes yet</p>
-        <p className="text-xs text-slate-400 mt-1">
-          Changes to drawings and designs will appear here.
-        </p>
+      <div className="p-2 divide-y divide-slate-100">
+        {chisels.slice(0, 5).map((chisel) => {
+          const meta = chiselStatusMeta[chisel.status] || chiselStatusMeta.PENDING;
+          return (
+            <Link
+              key={chisel._id}
+              to={`/issue/${projectId}/${chisel.issue_id}`}
+              className="flex items-start gap-3 px-3 py-3 rounded-lg hover:bg-slate-50 transition-all"
+            >
+              <span className="mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 bg-emerald-500" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-medium text-sm text-slate-900 truncate">
+                    {chisel.title}
+                  </p>
+                  <span
+                    className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${meta.badge}`}
+                  >
+                    {meta.label}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-400">
+                  Chiseled by{" "}
+                  {chisel.commit_author?.username || "Manager"} ·{" "}
+                  {timeAgo(chisel.committed_at)}
+                </p>
+              </div>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
@@ -499,6 +551,114 @@ function IssueStats({ issues }) {
   );
 }
 
+const WEATHER_LOCATION = { name: "Sindri", lat: 23.75, lon: 86.48 };
+
+function weatherIcon(code) {
+  if (code <= 1) return { icon: "☀️", label: "Clear sky" };
+  if (code <= 3) return { icon: "🌤️", label: "Partly cloudy" };
+  if (code <= 48) return { icon: "🌫️", label: "Foggy" };
+  if (code <= 55) return { icon: "🌧️", label: "Drizzle" };
+  if (code <= 65) return { icon: "🌧️", label: "Rain" };
+  if (code <= 77) return { icon: "🌨️", label: "Snow" };
+  if (code <= 82) return { icon: "🌦️", label: "Showers" };
+  if (code <= 86) return { icon: "🌨️", label: "Snow showers" };
+  return { icon: "⛈️", label: "Thunderstorm" };
+}
+
+function WeatherForecast({ location = WEATHER_LOCATION }) {
+  const [days, setDays] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const lat = location?.lat ?? WEATHER_LOCATION.lat;
+  const lon = location?.lon ?? WEATHER_LOCATION.lon;
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&forecast_days=4&timezone=auto`
+    )
+      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
+      .then((data) => {
+        if (cancelled) return;
+        const daily = data.daily || {};
+        const parsed = (daily.time || []).map((date, i) => {
+          const d = new Date(date);
+          const dateStr = i === 0 ? "Today" : d.toLocaleDateString("en-US", { weekday: "short" });
+          const weather = weatherIcon(daily.weather_code?.[i] ?? 0);
+          return {
+            dateStr,
+            date: d.getDate(),
+            ...weather,
+            max: Math.round(daily.temperature_2m_max?.[i] ?? 0),
+            min: Math.round(daily.temperature_2m_min?.[i] ?? 0),
+            precip: daily.precipitation_probability_max?.[i] ?? 0,
+            wind: Math.round(daily.wind_speed_10m_max?.[i] ?? 0),
+          };
+        });
+        setDays(parsed);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [lat, lon]);
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-slate-900">Weather</h3>
+        <span className="text-xs text-slate-400">{location?.name ?? "Sindri"}</span>
+      </div>
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-6 text-center">
+          <Loader2 size={20} className="animate-spin text-slate-300" />
+          <p className="mt-2 text-xs text-slate-400">Loading forecast...</p>
+        </div>
+      ) : error ? (
+        <div className="py-6 text-center">
+          <p className="text-sm font-medium text-slate-600">Unable to load weather</p>
+          <p className="mt-1 text-xs text-slate-400">
+            Check your internet connection and try again.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {days.map((day, i) => (
+            <div
+              key={i}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 ${
+                i === 0 ? "bg-amber-50 border border-amber-100" : "bg-slate-50"
+              }`}
+            >
+              <div className="w-14 shrink-0">
+                <p className="text-sm font-medium text-slate-900">{day.dateStr}</p>
+                <p className="text-xs text-slate-400">{day.label}</p>
+              </div>
+              <div className="flex-1 text-xl text-center">{day.icon}</div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-semibold text-slate-900">
+                  {day.max}° <span className="text-slate-400">{day.min}°</span>
+                </p>
+                <p className="text-xs text-slate-400">
+                  🌧️ {day.precip}% · 💨 {day.wind} km/h
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EmptyState({ title, message, cta, onCta }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -583,14 +743,14 @@ function ChiselList({ chisels, projectId }) {
     return (
       <div className="bg-white border border-slate-200 rounded-xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h3 className="font-semibold text-slate-900">Commits</h3>
+          <h3 className="font-semibold text-slate-900">Chisels</h3>
         </div>
         <div className="px-5 py-12 flex flex-col items-center justify-center text-center">
           <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
             <GitBranch size={20} className="text-slate-400" />
           </div>
           <p className="text-sm font-medium text-slate-700">
-            No Chisel's yet
+            No chisels yet
           </p>
           <p className="text-xs text-slate-400 mt-1">
             Completed issues will appear here once they are chiseled.
@@ -629,7 +789,7 @@ function ChiselList({ chisels, projectId }) {
               )}
               <div className="mt-3 flex items-center gap-4 text-xs text-slate-400">
                 <span>
-                  Committed by {chisel.commit_author?.username || "Manager"}
+                  Chiseled by {chisel.commit_author?.username || "Manager"}
                 </span>
                 <span>
                   {chisel.comment_count || 0} comment
@@ -656,8 +816,11 @@ export default function Dashboard() {
 
   const resolveTab = (param) => {
     if (!param) return "Overview";
-    if (param.toLowerCase() === "commits" || param.toLowerCase() === "changes")
-      return "Commits";
+    if (
+      param.toLowerCase() === "chisels" ||
+      param.toLowerCase() === "changes"
+    )
+      return "Chisels";
     const cap = capitalize(param);
     return tabs.includes(cap) ? cap : "Overview";
   };
@@ -767,7 +930,7 @@ export default function Dashboard() {
   const activeTabMapped = tabs.includes(activeTab) ? activeTab : "Overview";
   const sidebarLabelMap = {
     team: "Teams",
-    changes: "Commits",
+    changes: "Chisels",
     viewer: "3D Viewer",
     analytics: "Analytics",
     drawings: "Drawings",
@@ -831,7 +994,7 @@ export default function Dashboard() {
                 />
               ) : activeTab === "Issues" ? (
                 <IssueList issues={issues} projectId={displayProject._id} />
-              ) : activeTab === "Commits" ? (
+              ) : activeTab === "Chisels" ? (
                 <ChiselList
                   chisels={chisels}
                   projectId={displayProject._id}
@@ -840,7 +1003,7 @@ export default function Dashboard() {
                 <>
                   <StatCards issues={issues} />
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <RecentChanges />
+                    <RecentChanges chisels={chisels} projectId={displayProject._id} />
                     <ProjectActivity issues={issues} />
                   </div>
                 </>
@@ -852,6 +1015,7 @@ export default function Dashboard() {
             <div className="p-6 space-y-6 border-l border-slate-200 bg-slate-50">
               <AssignedToMe issues={assignedToMe} />
               <IssueStats issues={issues} />
+              <WeatherForecast />
             </div>
           )}
         </div>

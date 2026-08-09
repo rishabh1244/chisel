@@ -112,6 +112,80 @@ function DetailRow({ icon: Icon, label, value, tone }) {
   );
 }
 
+function CommentsSection({ comments, loading }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200">
+        <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+          <MessageSquare size={16} className="text-slate-400" />
+          Comments ({comments.length})
+        </h3>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-10 text-slate-400">
+          <Loader2 size={22} className="animate-spin" />
+        </div>
+      ) : comments.length === 0 ? (
+        <div className="px-5 py-10 text-center">
+          <p className="text-sm font-medium text-slate-700">No comments yet</p>
+          <p className="text-xs text-slate-400 mt-1">
+            Discussion on this issue will appear here.
+          </p>
+        </div>
+      ) : (
+        <div className="p-4 space-y-3">
+          {comments.map((comment) => (
+              <div
+                key={comment._id}
+                className="flex gap-3 border border-slate-200 rounded-xl p-4 bg-white"
+              >
+                <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 bg-slate-200 flex items-center justify-center">
+                  <img
+                    src={defaultAvatar}
+                    alt={comment.created_by?.username || "User"}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-slate-900 truncate">
+                      {comment.created_by?.username || "Unknown user"}
+                    </span>
+                    <span className="text-xs text-slate-400 shrink-0">
+                      {timeAgo(comment.created_at)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                    {comment.content}
+                  </p>
+                  {comment.media_links?.length > 0 && (
+                    <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {comment.media_links.map((link, idx) => (
+                        <img
+                          key={idx}
+                          src={link}
+                          alt="media"
+                          className="rounded-lg border border-slate-200 object-cover w-full h-24"
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+      )}
+    </div>
+  );
+}
+
 export default function IssueDetail() {
   const { projectId, issueId } = useParams();
   const navigate = useNavigate();
@@ -119,9 +193,11 @@ export default function IssueDetail() {
   const [project, setProject] = useState(null);
   const [issue, setIssue] = useState(null);
   const [team, setTeam] = useState(null);
-  const [isCommitted, setIsCommitted] = useState(false);
+  const [comments, setComments] = useState([]);
+  const [isChiseled, setIsChiseled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
+  const [commentsLoading, setCommentsLoading] = useState(false);
   const [actionError, setActionError] = useState("");
   const [error, setError] = useState("");
 
@@ -154,13 +230,13 @@ export default function IssueDetail() {
           (p) => p._id === projectId
         );
         const chisels = Array.isArray(chiselsData) ? chiselsData : [];
-        const committed = chisels.some(
+        const chiseled = chisels.some(
           (c) => String(c.issue_id) === String(issueId)
         );
 
         setIssue(foundIssue || null);
         setTeam(teamData || null);
-        setIsCommitted(committed);
+        setIsChiseled(chiseled);
         setProject(
           foundProject
             ? { ...foundProject, name: foundProject.name || foundProject.title }
@@ -179,6 +255,26 @@ export default function IssueDetail() {
       cancelled = true;
     };
   }, [projectId, issueId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadComments() {
+      if (!issueId) return;
+      setCommentsLoading(true);
+      try {
+        const data = await api.getIssueComments(issueId);
+        if (!cancelled) setComments(Array.isArray(data) ? data : []);
+      } catch {
+        if (!cancelled) setComments([]);
+      } finally {
+        if (!cancelled) setCommentsLoading(false);
+      }
+    }
+    loadComments();
+    return () => {
+      cancelled = true;
+    };
+  }, [issueId]);
 
   const isManager = useMemo(() => {
     if (!currentUser?._id || !team) return false;
@@ -213,8 +309,8 @@ export default function IssueDetail() {
     setActing(true);
     setActionError("");
     try {
-      await api.commitChisel({ projectId, issueId });
-      setIsCommitted(true);
+      await api.createChisel({ projectId, issueId });
+      setIsChiseled(true);
     } catch (err) {
       setActionError(err.message);
     } finally {
@@ -252,7 +348,8 @@ export default function IssueDetail() {
       projectId={projectId}
       projectName={project?.name || "Dashboard"}
     >
-      <div className="px-6 py-4 border-b border-slate-200 bg-white">
+      <div className="flex flex-col h-[calc(100vh-4rem)]">
+      <div className="px-6 py-4 border-b border-slate-200 bg-white shrink-0">
         <button
           onClick={() =>
             projectId
@@ -266,7 +363,7 @@ export default function IssueDetail() {
         </button>
       </div>
 
-      <main className="p-6">
+      <main className="flex-1 min-h-0">
         {error ? (
           <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm">
             {error}
@@ -290,8 +387,8 @@ export default function IssueDetail() {
             </Link>
           </div>
         ) : (
-          <div className="max-w-5xl mx-auto">
-            <div className="flex flex-wrap items-center gap-4 mb-6">
+          <div className="max-w-5xl mx-auto h-full flex flex-col">
+            <div className="flex flex-wrap items-center gap-4 mb-5 shrink-0">
               <div className="flex-1 min-w-0">
                 <h1 className="text-2xl font-bold text-slate-900 leading-tight">
                   {issue.title}
@@ -310,15 +407,15 @@ export default function IssueDetail() {
             </div>
 
             {isManager && (
-              <div className="flex flex-wrap items-center gap-3 px-4 py-3 mb-6 rounded-xl border border-amber-200 bg-amber-50">
+              <div className="flex flex-wrap items-center gap-3 px-4 py-3 mb-5 rounded-xl border border-amber-200 bg-amber-50 shrink-0">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-amber-900">
                     Manager actions
                   </p>
                   <p className="text-xs text-amber-700">
                     {issue.status === "RESOLVED"
-                      ? isCommitted
-                        ? "This issue has been committed with a Chisel."
+                      ? isChiseled
+                        ? "This issue has been chiseled."
                         : "Issue is complete. Chisel the work to record it."
                       : "Mark the issue as completed to start recording work."}
                   </p>
@@ -341,7 +438,7 @@ export default function IssueDetail() {
                       Mark Completed
                     </button>
                   ) : null}
-                  {!isCommitted ? (
+                  {!isChiseled ? (
                     <button
                       onClick={handleChisel}
                       disabled={acting || issue.status !== "RESOLVED"}
@@ -357,15 +454,16 @@ export default function IssueDetail() {
                   ) : (
                     <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-green-100 text-green-700 text-sm font-medium">
                       <Check size={15} />
-                      Committed
+                      Chiseled
                     </span>
                   )}
                 </div>
               </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
-              <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 flex-1 min-h-0">
+              <div className="flex flex-col min-h-0">
+                <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
                 <article className="bg-white border border-slate-200 rounded-xl overflow-hidden">
                   <div className="flex items-center gap-3 px-5 py-3.5 bg-slate-50 border-b border-slate-200">
                     <div
@@ -423,6 +521,9 @@ export default function IssueDetail() {
                     </span>
                   </div>
                 </article>
+
+                <CommentsSection comments={comments} loading={commentsLoading} />
+                </div>
               </div>
 
               <aside className="bg-white border border-slate-200 rounded-xl h-fit">
@@ -472,6 +573,7 @@ export default function IssueDetail() {
           </div>
         )}
       </main>
+      </div>
     </DashboardLayout>
   );
 }

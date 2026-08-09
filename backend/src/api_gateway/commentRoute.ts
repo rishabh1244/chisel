@@ -3,11 +3,22 @@ import { authenticate } from '../middleware/auth'
 import { createComment } from '../services/comment_handler/createComment'
 import { editComment } from '../services/comment_handler/editComment'
 import { deleteComment } from '../services/comment_handler/deleteComment'
+import { getCommentsForIssue } from '../services/comment_handler/getComments'
 import { Types } from 'mongoose'
 
 const router = Router()
 
 router.use(authenticate)
+
+router.get('/issue/:issueId', async (req: Request, res: Response) => {
+  try {
+    const comments = await getCommentsForIssue(new Types.ObjectId(req.params.issueId as string))
+    res.json(comments)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to fetch comments'
+    res.status(400).json({ error: message })
+  }
+})
 
 router.post('/createComment', async (req: Request, res: Response) => {
   try {

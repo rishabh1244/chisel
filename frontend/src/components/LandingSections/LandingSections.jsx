@@ -21,7 +21,7 @@ export function FeaturesSection() {
   const features = [
     {
       icon: GitCommit,
-      title: 'Chisel Commit',
+      title: 'Chisel work',
       body: 'Workers log completed work as discrete units with photo and video evidence — attributed, timestamped, permanent.'
     },
     {
@@ -81,8 +81,8 @@ export function HowItWorksSection() {
     {
       number: '01',
       icon: Camera,
-      title: 'Worker commits',
-      body: 'Snap a photo or video of completed work. Add a description. Submit as a Chisel commit.'
+      title: 'Chiseling work',
+      body: 'Snap a photo or video of completed work. Add a description. Submit as a Chisel.'
     },
     {
       number: '02',
@@ -157,7 +157,7 @@ export function PricingSection() {
           <ul className="pricing-card__features">
             <li className="checked"><Check size={16} color="#22a55e" /> Up to 2 active projects</li>
             <li className="checked"><Check size={16} color="#22a55e" /> 5 team members</li>
-            <li className="checked"><Check size={16} color="#22a55e" /> Basic commit & verify workflow</li>
+            <li className="checked"><Check size={16} color="#22a55e" /> Basic chisel & verify workflow</li>
             <li className="checked"><Check size={16} color="#22a55e" /> 30-day history</li>
             <li className="disabled"><X size={16} /> AI anomaly detection</li>
             <li className="disabled"><X size={16} /> Contractor credentialing</li>
@@ -176,7 +176,7 @@ export function PricingSection() {
           <ul className="pricing-card__features">
             <li className="checked"><Check size={16} color="#22a55e" /> Unlimited projects</li>
             <li className="checked"><Check size={16} color="#22a55e" /> Up to 50 team members</li>
-            <li className="checked"><Check size={16} color="#22a55e" /> Full commit & verify workflow</li>
+            <li className="checked"><Check size={16} color="#22a55e" /> Full chisel & verify workflow</li>
             <li className="checked"><Check size={16} color="#22a55e" /> Unlimited history</li>
             <li className="checked"><Check size={16} color="#22a55e" /> AI anomaly detection</li>
             <li className="checked"><Check size={16} color="#22a55e" /> Issue tracking & assignment</li>

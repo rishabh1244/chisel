@@ -16,13 +16,14 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import defaultAvatar from "/assets/default-avatar.svg";
+import dashboardPic from "../../assets/dashboard_pic.png";
 
 export const nav = {
   workspace: [
     { label: "Overview", icon: LayoutDashboard, view: "overview" },
     { label: "Teams", icon: Users, view: "team" },
     { label: "Issues", icon: AlertCircle, view: "issues" },
-    { label: "Commits", icon: GitBranch, view: "changes" },
+    { label: "Chisels", icon: GitBranch, view: "changes" },
     { label: "Analytics", icon: BarChart3, view: "analytics" },
   ],
   tools: [
@@ -65,17 +66,27 @@ function Avatar({ name, size = 36, img }) {
 function Sidebar({ user, active, onNavigate, projectId }) {
   return (
     <aside className="hidden lg:flex flex-col w-64 shrink-0 border-r border-slate-200 bg-white h-screen sticky top-0">
-      <div className="flex items-center gap-2 px-6 h-16 border-b border-slate-100">
+      <div className="flex items-center gap-2 px-6 h-16 border-b border-slate-100 shrink-0">
         <div className="w-8 h-8 rounded-lg bg-amber-400 flex items-center justify-center text-white font-bold">
           C
         </div>
         <span className="font-semibold text-lg text-slate-900">Chisel</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+      <div className="flex-1 px-3 py-4 space-y-6">
         <NavSection title="Workspace" items={nav.workspace} active={active} onNavigate={onNavigate} projectId={projectId} />
         <NavSection title="Tools" items={nav.tools} active={active} onNavigate={onNavigate} projectId={projectId} />
         <NavSection title="Config" items={nav.config} active={active} onNavigate={onNavigate} projectId={projectId} />
+      </div>
+
+      <div className="px-3 py-2 border-t border-slate-100">
+        <button className="w-full h-44 rounded-xl overflow-hidden bg-white flex items-center justify-center">
+          <img
+            src={dashboardPic}
+            alt="Dashboard 3D preview"
+            className="w-full h-full object-cover"
+          />
+        </button>
       </div>
 
       <div className="border-t border-slate-100 p-3">
@@ -196,16 +207,16 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="h-screen bg-slate-50 flex overflow-hidden">
       <Sidebar
         user={user}
         active={active}
         projectId={projectId}
         onNavigate={handleNavigate}
       />
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 flex flex-col">
         <TopBar user={user} projectName={projectName} projectId={projectId} />
-        {children}
+        <main className="flex-1 min-h-0 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

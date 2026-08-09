@@ -9,6 +9,7 @@ import fetchProblemsRoutes from './api_gateway/fetch_projects'
 import issueRoutes from './api_gateway/issueRoute'
 import commentRoutes from './api_gateway/commentRoute'
 import blueprintRoutes from './api_gateway/blueprintRoute'
+import chiselRoutes from './api_gateway/chiselRoute'
 import bcrypt from 'bcryptjs'
 import User from './models/User'
 
@@ -54,6 +55,7 @@ app.use('/api/projects', fetchProblemsRoutes)
 app.use('/api/issues', issueRoutes)
 app.use('/api/comments', commentRoutes)
 app.use('/api/blueprint', blueprintRoutes)
+app.use('/api/chisel', chiselRoutes)
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`)
