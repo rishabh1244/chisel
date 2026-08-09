@@ -72,6 +72,7 @@ export const api = {
 
   // Issues
   getProjectIssues: (projectId) => request(`/api/issues/project/${projectId}`),
+  getProjectTeam: (projectId) => request(`/api/projects/${projectId}/team`),
   createIssue: (data) =>
     request('/api/issues/createIssue', { method: 'POST', body: data }),
   editIssue: (data) =>

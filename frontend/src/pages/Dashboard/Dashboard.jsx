@@ -1,51 +1,19 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { useParams, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  LayoutDashboard,
-  FolderKanban,
   AlertCircle,
   GitBranch,
-  Users,
-  BarChart3,
-  PencilRuler,
   Box,
-  FileText,
-  Settings,
-  LayoutTemplate,
-  Plug,
-  Search,
-  Bell,
-  ChevronDown,
-  ChevronRight,
-  MoreVertical,
   CheckCircle2,
+  ChevronDown,
+  LayoutDashboard,
   Inbox,
   Loader2,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../api/client";
 import { sampleImageFor } from "../../utils/sampleImages";
-import defaultAvatar from "/assets/default-avatar.svg";
-
-const nav = {
-  workspace: [
-    { label: "Projects", icon: FolderKanban },
-    { label: "Issues", icon: AlertCircle },
-    { label: "Changes", icon: GitBranch },
-    { label: "Teams", icon: Users },
-    { label: "Analytics", icon: BarChart3 },
-  ],
-  tools: [
-    { label: "Drawings", icon: PencilRuler },
-    { label: "3D Viewer", icon: Box },
-    { label: "Reports", icon: FileText },
-  ],
-  config: [
-    { label: "Settings", icon: Settings },
-    { label: "Templates", icon: LayoutTemplate },
-    { label: "Integrations", icon: Plug },
-  ],
-};
+import DashboardLayout from "../../components/DashboardLayout/DashboardLayout.jsx";
 
 const tabs = ["Overview", "Issues", "Changes", "Files", "Team", "Settings"];
 
@@ -83,6 +51,11 @@ function timeAgo(value) {
 function shortId(id) {
   if (!id) return "N/A";
   return `ISS-${String(id).slice(-5).toUpperCase()}`;
+}
+
+function capitalize(str) {
+  if (!str) return "";
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 function Avatar({ name, size = 36, img }) {
@@ -164,103 +137,6 @@ function Donut({ data, size = 130, thickness = 18 }) {
 }
 
 // ------------------------------- SUBCOMPONENTS ------------------------------
-
-function Sidebar({ user, onSelectProject }) {
-  return (
-    <aside className="hidden lg:flex flex-col w-64 shrink-0 border-r border-slate-200 bg-white h-screen sticky top-0">
-      <div className="flex items-center gap-2 px-6 h-16 border-b border-slate-100">
-        <div className="w-8 h-8 rounded-lg bg-amber-400 flex items-center justify-center text-white font-bold">
-          C
-        </div>
-        <span className="font-semibold text-lg text-slate-900">Chisel</span>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-        <button
-          onClick={() => onSelectProject(null)}
-          className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-amber-50 text-amber-700 font-medium text-sm"
-        >
-          <span className="flex items-center gap-2">
-            <LayoutDashboard size={18} />
-            Dashboard
-          </span>
-          <ChevronDown size={16} />
-        </button>
-
-        <NavSection title="Workspace" items={nav.workspace} />
-        <NavSection title="Tools" items={nav.tools} />
-        <NavSection title="Config" items={nav.config} />
-      </div>
-
-      <div className="border-t border-slate-100 p-3">
-        <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-50">
-          <Avatar name={user?.username || "User"} size={32} img={defaultAvatar} />
-          <span className="flex-1 text-left">
-            <span className="block text-sm font-medium text-slate-900">
-              {user?.username || "User"}
-            </span>
-            <span className="block text-xs text-slate-400">Project Admin</span>
-          </span>
-          <ChevronDown size={16} className="text-slate-400" />
-        </button>
-      </div>
-    </aside>
-  );
-}
-
-function NavSection({ title, items }) {
-  return (
-    <div>
-      <p className="px-3 mb-2 text-xs font-semibold tracking-wide text-slate-400 uppercase">
-        {title}
-      </p>
-      <div className="space-y-1">
-        {items.map(({ label, icon: Icon }) => (
-          <button
-            key={label}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-          >
-            <Icon size={18} />
-            {label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function TopBar({ user, projectName }) {
-  const navigate = useNavigate();
-  return (
-    <div className="flex items-center justify-between h-16 px-6 border-b border-slate-200 bg-white sticky top-0 z-10">
-      <div className="flex items-center gap-2 text-sm">
-        <button
-          onClick={() => navigate("/projects")}
-          className="text-slate-400 hover:text-slate-600"
-        >
-          Projects
-        </button>
-        <ChevronRight size={14} className="text-slate-300" />
-        <span className="font-medium text-slate-900">{projectName}</span>
-      </div>
-
-      <div className="flex items-center gap-4">
-        <div className="hidden md:flex items-center gap-2 w-72 px-3 py-2 rounded-lg border border-slate-200 text-slate-400 text-sm">
-          <Search size={16} />
-          <span className="flex-1">Search anything...</span>
-          <kbd className="text-xs border border-slate-200 rounded px-1.5 py-0.5">
-            ⌘K
-          </kbd>
-        </div>
-        <button className="relative p-2 rounded-lg hover:bg-slate-50">
-          <Bell size={20} className="text-slate-500" />
-          <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500" />
-        </button>
-        <Avatar name={user?.username || "User"} size={36} img={defaultAvatar} />
-      </div>
-    </div>
-  );
-}
 
 const projectStatusLabel = {
   inProgress: "In Progress",
@@ -649,9 +525,24 @@ export default function Dashboard() {
   const { projectId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
 
-  const [activeTab, setActiveTab] = React.useState("Overview");
+  const initialTab = searchParams.get("tab");
+  const [activeTab, setActiveTab] = React.useState(
+    initialTab && tabs.includes(capitalize(initialTab))
+      ? capitalize(initialTab)
+      : "Overview"
+  );
+
+  useEffect(() => {
+    const current = searchParams.get("tab");
+    setActiveTab(
+      current && tabs.includes(capitalize(current))
+        ? capitalize(current)
+        : "Overview"
+    );
+  }, [searchParams]);
   const [currentProject, setCurrentProject] = useState(
     location.state?.project || null
   );
@@ -712,9 +603,33 @@ export default function Dashboard() {
     navigate("/projects");
   };
 
+  const handleTabChange = (tab) => {
+    if (tab === "Team") {
+      if (displayProject?._id) {
+        navigate(`/team/${displayProject._id}`);
+        return;
+      }
+    }
+    setActiveTab(tab);
+  };
+
   const displayProject = currentProject
     ? { ...currentProject, name: currentProject.name || currentProject.title }
     : null;
+
+  const activeTabMapped = tabs.includes(activeTab) ? activeTab : "Overview";
+  const sidebarLabelMap = {
+    team: "Teams",
+    viewer: "3D Viewer",
+    analytics: "Analytics",
+    drawings: "Drawings",
+    reports: "Reports",
+    settings: "Settings",
+    templates: "Templates",
+  };
+  const sidebarActive = initialTab
+    ? sidebarLabelMap[initialTab] || activeTabMapped
+    : "Overview";
 
   const resolvedCount = issues.filter((i) => i.status === "RESOLVED").length;
   const progress = issues.length
@@ -735,58 +650,57 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      <Sidebar user={user} onSelectProject={handleSelectProject} />
-
-      <div className="flex-1 min-w-0">
-        <TopBar user={user} projectName={displayProject?.name || "Dashboard"} />
-
-        {!displayProject ? (
-          <div className="p-6">
-            <EmptyState
-              title="Select a project"
-              message="Pick a project from your workspace to view its dashboard, issues and activity."
-              cta="Go to Projects"
-              onCta={handleSelectProject}
+    <DashboardLayout
+      user={user}
+      active={sidebarActive}
+      projectId={displayProject?._id}
+      projectName={displayProject?.name || "Dashboard"}
+    >
+      {!displayProject ? (
+        <div className="p-6">
+          <EmptyState
+            title="Select a project"
+            message="Pick a project from your workspace to view its dashboard, issues and activity."
+            cta="Go to Projects"
+            onCta={handleSelectProject}
+          />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px]">
+          <div className="min-w-0">
+            <ProjectHeader project={displayProject} progress={progress} />
+            <Tabs
+              active={activeTab}
+              onChange={handleTabChange}
+              issuesCount={issues.length}
             />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px]">
-            <div className="min-w-0">
-              <ProjectHeader project={displayProject} progress={progress} />
-              <Tabs
-                active={activeTab}
-                onChange={setActiveTab}
-                issuesCount={issues.length}
-              />
 
-              <div className="p-6 space-y-6">
-                {issues.length === 0 ? (
-                  <EmptyState
-                    title="No issues yet"
-                    message="Create the first issue to start tracking problems, changes and project activity."
-                  />
-                ) : (
-                  <>
-                    <StatCards issues={issues} />
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <RecentChanges />
-                      <ProjectActivity issues={issues} />
-                    </div>
-                  </>
-                )}
-              </div>
+            <div className="p-6 space-y-6">
+              {issues.length === 0 ? (
+                <EmptyState
+                  title="No issues yet"
+                  message="Create the first issue to start tracking problems, changes and project activity."
+                />
+              ) : (
+                <>
+                  <StatCards issues={issues} />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <RecentChanges />
+                    <ProjectActivity issues={issues} />
+                  </div>
+                </>
+              )}
             </div>
-
-            {issues.length > 0 && (
-              <div className="p-6 space-y-6 border-l border-slate-200 bg-slate-50">
-                <AssignedToMe issues={assignedToMe} />
-                <IssueStats issues={issues} />
-              </div>
-            )}
           </div>
-        )}
-      </div>
-    </div>
+
+          {issues.length > 0 && (
+            <div className="p-6 space-y-6 border-l border-slate-200 bg-slate-50">
+              <AssignedToMe issues={assignedToMe} />
+              <IssueStats issues={issues} />
+            </div>
+          )}
+        </div>
+      )}
+    </DashboardLayout>
   );
 }

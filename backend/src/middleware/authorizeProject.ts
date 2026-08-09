@@ -3,7 +3,7 @@ import mongoose from 'mongoose'
 import Project from "../models/Project"
 
 export async function authorizeProject(req: Request, res: Response, next: NextFunction) {
-  const projectId = req.body.projectId || req.params.projectId || req.query.projectId
+  const projectId = req.body?.projectId || req.params.projectId || req.query.projectId
 
   if (!projectId) {
     res.status(400).json({ error: 'projectId is required' })
