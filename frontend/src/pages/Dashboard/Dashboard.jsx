@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useLocation, useNavigate, useSearchParams, Link } from "react-router-dom";
 import {
   AlertCircle,
   GitBranch,
@@ -15,7 +15,7 @@ import { api } from "../../api/client";
 import { sampleImageFor } from "../../utils/sampleImages";
 import DashboardLayout from "../../components/DashboardLayout/DashboardLayout.jsx";
 
-const tabs = ["Overview", "Issues", "Changes", "Files", "Team", "Settings"];
+const tabs = ["Overview", "Issues", "Commits", "Files", "Team", "Settings"];
 
 // ------------------------------- HELPERS ------------------------------------
 
@@ -46,11 +46,6 @@ function timeAgo(value) {
     month: "short",
     year: "numeric",
   });
-}
-
-function shortId(id) {
-  if (!id) return "N/A";
-  return `ISS-${String(id).slice(-5).toUpperCase()}`;
 }
 
 function capitalize(str) {
@@ -352,9 +347,16 @@ function ProjectActivity({ issues }) {
   const activity = issues.slice(0, 8).map((issue) => ({
     person: issue.created_by?.username || "Someone",
     action: "created an issue",
-    refTag: shortId(issue._id),
+    refTag:
+      issueStatusMeta[issue.status]?.label ||
+      issueStatusMeta.OPEN.label,
     refText: issue.title,
-    refTone: issue.status === "RESOLVED" ? "success" : "danger",
+    refTone:
+      issue.status === "RESOLVED"
+        ? "success"
+        : issue.status === "IN_PROGRESS"
+        ? "amber"
+        : "danger",
     time: timeAgo(issue.created_at),
   }));
 
@@ -437,19 +439,17 @@ function AssignedToMe({ issues }) {
               <Avatar name={issue.title} size={32} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-slate-400">
-                    {shortId(issue._id)}
+                  <span className="text-sm text-slate-700 truncate">
+                    {issue.title}
                   </span>
                   <span
                     className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      issue.status === "RESOLVED"
-                        ? "bg-green-50 text-green-600"
-                        : issue.status === "IN_PROGRESS"
-                        ? "bg-amber-50 text-amber-600"
-                        : "bg-red-50 text-red-600"
+                      issueStatusMeta[issue.status]?.badge ||
+                      issueStatusMeta.OPEN.badge
                     }`}
                   >
-                    {issue.status.replace("_", " ")}
+                    {issueStatusMeta[issue.status]?.label ||
+                      issueStatusMeta.OPEN.label}
                   </span>
                 </div>
                 <p className="text-sm font-medium text-slate-900 truncate">
@@ -519,6 +519,132 @@ function EmptyState({ title, message, cta, onCta }) {
   );
 }
 
+const issueStatusMeta = {
+  OPEN: { label: "Pending", badge: "bg-red-50 text-red-600", dot: "bg-red-500" },
+  IN_PROGRESS: { label: "In Progress", badge: "bg-amber-50 text-amber-600", dot: "bg-amber-500" },
+  RESOLVED: { label: "Completed", badge: "bg-green-50 text-green-600", dot: "bg-green-500" },
+};
+
+function IssueList({ issues, projectId }) {
+  if (issues.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      {issues.map((issue) => {
+        const meta = issueStatusMeta[issue.status] || issueStatusMeta.OPEN;
+        return (
+          <Link
+            key={issue._id}
+            to={`/issue/${projectId}/${issue._id}`}
+            className="bg-white border border-slate-200 rounded-xl p-5 flex items-start gap-4 hover:shadow-md hover:border-slate-300 transition-all"
+          >
+            <span className={`mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 ${meta.dot}`} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-semibold text-slate-900 truncate">
+                  {issue.title}
+                </h3>
+                <span
+                  className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${meta.badge}`}
+                >
+                  {meta.label}
+                </span>
+              </div>
+              {issue.description && (
+                <p className="mt-1 text-sm text-slate-500 line-clamp-2">
+                  {issue.description}
+                </p>
+              )}
+              <div className="mt-3 flex items-center gap-4 text-xs text-slate-400">
+                <span>
+                  Created by {issue.created_by?.username || "Someone"}
+                </span>
+                <span>
+                  Assigned to {issue.assigned_to?.username || "Unassigned"}
+                </span>
+                <span>{timeAgo(issue.created_at)}</span>
+              </div>
+            </div>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+const chiselStatusMeta = {
+  PENDING: { label: "Pending", badge: "bg-slate-50 text-slate-600" },
+  APPROVED: { label: "Approved", badge: "bg-green-50 text-green-600" },
+  REJECTED: { label: "Rejected", badge: "bg-red-50 text-red-600" },
+};
+
+function ChiselList({ chisels, projectId }) {
+  if (chisels.length === 0) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <h3 className="font-semibold text-slate-900">Commits</h3>
+        </div>
+        <div className="px-5 py-12 flex flex-col items-center justify-center text-center">
+          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+            <GitBranch size={20} className="text-slate-400" />
+          </div>
+          <p className="text-sm font-medium text-slate-700">
+            No Chisel's yet
+          </p>
+          <p className="text-xs text-slate-400 mt-1">
+            Completed issues will appear here once they are chiseled.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {chisels.map((chisel) => {
+        const meta = chiselStatusMeta[chisel.status] || chiselStatusMeta.PENDING;
+        return (
+          <Link
+            key={chisel._id}
+            to={`/issue/${projectId}/${chisel.issue_id}`}
+            className="bg-white border border-slate-200 rounded-xl p-5 flex items-start gap-4 hover:shadow-md hover:border-slate-300 transition-all"
+          >
+            <span className="mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 bg-emerald-500" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-semibold text-slate-900 truncate">
+                  {chisel.title}
+                </h3>
+                <span
+                  className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${meta.badge}`}
+                >
+                  {meta.label}
+                </span>
+              </div>
+              {chisel.description && (
+                <p className="mt-1 text-sm text-slate-500 line-clamp-2">
+                  {chisel.description}
+                </p>
+              )}
+              <div className="mt-3 flex items-center gap-4 text-xs text-slate-400">
+                <span>
+                  Committed by {chisel.commit_author?.username || "Manager"}
+                </span>
+                <span>
+                  {chisel.comment_count || 0} comment
+                  {chisel.comment_count === 1 ? "" : "s"}
+                </span>
+                <span>{timeAgo(chisel.committed_at)}</span>
+              </div>
+            </div>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 // ------------------------------- MAIN PAGE ----------------------------------
 
 export default function Dashboard() {
@@ -528,20 +654,19 @@ export default function Dashboard() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
 
+  const resolveTab = (param) => {
+    if (!param) return "Overview";
+    if (param.toLowerCase() === "commits" || param.toLowerCase() === "changes")
+      return "Commits";
+    const cap = capitalize(param);
+    return tabs.includes(cap) ? cap : "Overview";
+  };
+
   const initialTab = searchParams.get("tab");
-  const [activeTab, setActiveTab] = React.useState(
-    initialTab && tabs.includes(capitalize(initialTab))
-      ? capitalize(initialTab)
-      : "Overview"
-  );
+  const [activeTab, setActiveTab] = React.useState(resolveTab(initialTab));
 
   useEffect(() => {
-    const current = searchParams.get("tab");
-    setActiveTab(
-      current && tabs.includes(capitalize(current))
-        ? capitalize(current)
-        : "Overview"
-    );
+    setActiveTab(resolveTab(searchParams.get("tab")));
   }, [searchParams]);
   const [currentProject, setCurrentProject] = useState(
     location.state?.project || null
@@ -551,6 +676,8 @@ export default function Dashboard() {
   );
   const [issues, setIssues] = useState([]);
   const [issuesLoading, setIssuesLoading] = useState(false);
+  const [chisels, setChisels] = useState([]);
+  const [chiselsLoading, setChiselsLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -599,6 +726,26 @@ export default function Dashboard() {
     };
   }, [currentProject?._id]);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function loadChisels() {
+      if (!currentProject?._id) return;
+      setChiselsLoading(true);
+      try {
+        const data = await api.getProjectChisels(currentProject._id);
+        if (!cancelled) setChisels(Array.isArray(data) ? data : []);
+      } catch {
+        if (!cancelled) setChisels([]);
+      } finally {
+        if (!cancelled) setChiselsLoading(false);
+      }
+    }
+    loadChisels();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentProject?._id]);
+
   const handleSelectProject = () => {
     navigate("/projects");
   };
@@ -620,6 +767,7 @@ export default function Dashboard() {
   const activeTabMapped = tabs.includes(activeTab) ? activeTab : "Overview";
   const sidebarLabelMap = {
     team: "Teams",
+    changes: "Commits",
     viewer: "3D Viewer",
     analytics: "Analytics",
     drawings: "Drawings",
@@ -680,6 +828,13 @@ export default function Dashboard() {
                 <EmptyState
                   title="No issues yet"
                   message="Create the first issue to start tracking problems, changes and project activity."
+                />
+              ) : activeTab === "Issues" ? (
+                <IssueList issues={issues} projectId={displayProject._id} />
+              ) : activeTab === "Commits" ? (
+                <ChiselList
+                  chisels={chisels}
+                  projectId={displayProject._id}
                 />
               ) : (
                 <>

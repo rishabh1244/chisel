@@ -7,6 +7,7 @@ import DashboardPreview from './components/DashboardPreview/DashboardPreview.jsx
 import Dashboard from './pages/Dashboard/Dashboard.jsx'
 import Projects from './pages/Projects/Projects.jsx'
 import Team from './pages/Team/Team.jsx'
+import IssueDetail from './pages/IssueDetail/IssueDetail.jsx'
 import AuthPage from './pages/Auth/AuthPage.jsx'
 import { ProtectedRoute, useAuth } from './context/AuthContext.jsx'
 import './App.css'
@@ -83,6 +84,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Team />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/issue/:projectId/:issueId"
+          element={
+            <ProtectedRoute>
+              <IssueDetail />
             </ProtectedRoute>
           }
         />

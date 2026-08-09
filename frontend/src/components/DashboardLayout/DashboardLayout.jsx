@@ -22,7 +22,7 @@ export const nav = {
     { label: "Overview", icon: LayoutDashboard, view: "overview" },
     { label: "Teams", icon: Users, view: "team" },
     { label: "Issues", icon: AlertCircle, view: "issues" },
-    { label: "Changes", icon: GitBranch, view: "changes" },
+    { label: "Commits", icon: GitBranch, view: "changes" },
     { label: "Analytics", icon: BarChart3, view: "analytics" },
   ],
   tools: [

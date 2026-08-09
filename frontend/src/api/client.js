@@ -86,6 +86,11 @@ export const api = {
   deleteComment: (commentId) =>
     request('/api/comments/deleteComment', { method: 'DELETE', body: { commentId } }),
 
+  // Chisels (commits)
+  getProjectChisels: (projectId) => request(`/api/chisel/project/${projectId}`),
+  commitChisel: (data) =>
+    request('/api/chisel/commit', { method: 'POST', body: data }),
+
   // Blueprint (LLM)
   convertBlueprint: (data) =>
     request('/api/blueprint/convert', { method: 'POST', body: data }),
