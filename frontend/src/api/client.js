@@ -95,6 +95,37 @@ export const api = {
   // Blueprint (LLM)
   convertBlueprint: (data) =>
     request('/api/blueprint/convert', { method: 'POST', body: data }),
+  getProjectBlueprint: (projectId) =>
+    request(`/api/blueprint/project/${projectId}`),
+  async uploadBlueprint(projectId, file) {
+    const token = getToken()
+    const formData = new FormData()
+    formData.append('projectId', projectId)
+    formData.append('image', file)
+
+    const res = await fetch(`${API_URL}/api/blueprint/upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    })
+
+    let data = {}
+    try {
+      data = await res.json()
+    } catch {
+      data = {}
+    }
+
+    if (!res.ok) {
+      const error = new Error(
+        data.error || data.message || `Request failed with status ${res.status}`
+      )
+      error.status = res.status
+      throw error
+    }
+
+    return data
+  },
 }
 
 export default api

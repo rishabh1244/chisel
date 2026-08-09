@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard/Dashboard.jsx'
 import Projects from './pages/Projects/Projects.jsx'
 import Team from './pages/Team/Team.jsx'
 import IssueDetail from './pages/IssueDetail/IssueDetail.jsx'
+import Viewer from './pages/Viewer/Viewer.jsx'
 import AuthPage from './pages/Auth/AuthPage.jsx'
 import { ProtectedRoute, useAuth } from './context/AuthContext.jsx'
 import './App.css'
@@ -92,6 +93,14 @@ function App() {
           element={
             <ProtectedRoute>
               <IssueDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/view3d/:projectId?"
+          element={
+            <ProtectedRoute>
+              <Viewer />
             </ProtectedRoute>
           }
         />

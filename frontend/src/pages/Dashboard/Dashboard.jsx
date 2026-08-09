@@ -187,10 +187,13 @@ function ProjectHeader({ project, progress }) {
           </div>
         </div>
 
-        <button className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-colors">
+        <Link
+          to={`/view3d/${project._id}`}
+          className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-colors"
+        >
           <Box size={16} />
           3D View
-        </button>
+        </Link>
       </div>
 
       <div className="relative w-full lg:w-[420px] h-56 rounded-xl overflow-hidden bg-slate-100 shrink-0">

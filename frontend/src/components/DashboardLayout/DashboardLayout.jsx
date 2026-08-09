@@ -246,6 +246,8 @@ export default function DashboardLayout({
     }
     if (view === "team") {
       navigate(`/team/${id}`);
+    } else if (view === "viewer") {
+      navigate(`/view3d/${id}`);
     } else if (view === "overview") {
       navigate(`/dashboard/${id}`);
     } else {
