@@ -13,9 +13,12 @@ import {
   Bell,
   ChevronDown,
   ChevronRight,
+  LogOut,
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import defaultAvatar from "/assets/default-avatar.svg";
+import { useAuth } from "../../context/AuthContext";
 import dashboardPic from "../../assets/dashboard_pic.png";
 
 export const nav = {
@@ -133,6 +136,9 @@ function NavSection({ title, items, active, onNavigate, projectId }) {
 
 function TopBar({ user, projectName, projectId }) {
   const navigate = useNavigate();
+  const { logout } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
   const crumbs = [
     {
       label: projectId ? "Projects" : "Home",
@@ -140,8 +146,24 @@ function TopBar({ user, projectName, projectId }) {
     },
   ];
 
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    setMenuOpen(false);
+    logout();
+    navigate("/login");
+  };
+
   return (
-    <div className="flex items-center justify-between h-16 px-6 border-b border-slate-200 bg-white sticky top-0 z-10">
+    <div className="flex items-center justify-between h-16 px-6 border-b border-slate-200 bg-white sticky top-0 z-10 shrink-0">
       <Breadcrumbs crumbs={crumbs} projectName={projectName} projectId={projectId} />
 
       <div className="flex items-center gap-4">
@@ -156,7 +178,32 @@ function TopBar({ user, projectName, projectId }) {
           <Bell size={20} className="text-slate-500" />
           <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500" />
         </button>
-        <Avatar name={user?.username || "User"} size={36} img={defaultAvatar} />
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            className="flex items-center gap-2 p-1 rounded-full hover:bg-slate-100"
+          >
+            <Avatar name={user?.username || "User"} size={36} img={defaultAvatar} />
+            <ChevronDown size={14} className="text-slate-400" />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
+              <div className="px-4 py-3 border-b border-slate-100">
+                <p className="text-sm font-medium text-slate-900 truncate">
+                  {user?.username || "User"}
+                </p>
+                <p className="text-xs text-slate-400">Project Admin</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+              >
+                <LogOut size={16} />
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
