@@ -5,6 +5,7 @@ import path from 'path'
 import fs from 'fs'
 import { authenticate } from '../middleware/auth'
 import { blueprintToJson } from '../services/llm/blueprintToJson'
+import { normalizeToThreeJs } from '../services/llm/normalizeToThreeJs'
 import { uploadBlueprintImage } from '../services/blueprint_handler/uploadBlueprint'
 import { getProjectBlueprint } from '../services/blueprint_handler/getBlueprint'
 import Blueprint_Model from '../models/Blueprint'
@@ -37,41 +38,59 @@ const upload = multer({
   },
 })
 
-router.post('/convert', async (req: Request, res: Response) => {
+router.post('/convert', upload.single('image'), async (req: Request, res: Response) => {
   try {
-    const description = typeof req.body.description === 'string' ? req.body.description : ''
-    const imageUrl = typeof req.body.imageUrl === 'string' ? req.body.imageUrl : undefined
     const projectId = String(req.body.projectId || '')
-
-    if (!description) {
-      res.status(400).json({ error: 'Blueprint description (text) is required' })
-      return
-    }
 
     if (!projectId || !Types.ObjectId.isValid(projectId)) {
       res.status(400).json({ error: 'A valid projectId is required' })
       return
     }
 
-    const result = await blueprintToJson(description, imageUrl)
+    const imagePath = req.file?.path
+    const imageUrl =
+      typeof req.body.imageUrl === 'string' ? req.body.imageUrl : undefined
+
+    if (!imagePath && !imageUrl) {
+      res.status(400).json({
+        error: 'A blueprint image is required (multipart "image" file or imageUrl)',
+      })
+      return
+    }
+
+    const description =
+      typeof req.body.description === 'string' ? req.body.description : undefined
+
+    const result = await blueprintToJson({ imagePath, imageUrl, description })
+    const threejs = normalizeToThreeJs(result)
+
+    if (imagePath) {
+      fs.unlink(imagePath, () => {})
+    }
 
     const existing = await Blueprint_Model.findOne({ project_id: projectId })
 
     let blueprint
     if (existing) {
-      existing.threejs_json = result
+      existing.blueprint_json = result
+      existing.threejs_json = threejs
       blueprint = await existing.save()
     } else {
       blueprint = await Blueprint_Model.create({
         project_id: new Types.ObjectId(projectId),
         original_image: imageUrl,
         uploaded_by: new Types.ObjectId(req.user!._id),
-        threejs_json: result,
+        blueprint_json: result,
+        threejs_json: threejs,
         created_at: new Date(),
       })
     }
 
-    res.json({ blueprint_id: blueprint._id, ...result })
+    res.json({
+      blueprint_id: blueprint._id,
+      blueprint_json: result,
+      threejs_json: threejs,
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to convert blueprint'
     res.status(400).json({ error: message })
@@ -100,6 +119,8 @@ router.post(
         imagePath: req.file.path,
         uploadedBy: req.user!._id,
       })
+
+      fs.unlink(req.file.path, () => {})
 
       res.json({
         blueprint_id: blueprint._id,

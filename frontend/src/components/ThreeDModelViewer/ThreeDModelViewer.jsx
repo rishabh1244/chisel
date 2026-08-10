@@ -30,14 +30,36 @@ function buildObject(type, obj) {
   }
 
   if (type === "floor" || type === "ground") {
-    const width = obj.width ?? 10;
-    const depth = obj.depth ?? width;
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(width, 0.15, depth),
-      new THREE.MeshStandardMaterial({ color: MESH_COLORS.floor, roughness: 0.9 })
-    );
-    mesh.position.set(obj.position?.[0] ?? 0, 0.075, obj.position?.[1] ?? 0);
-    geometry.add(mesh);
+    const corners = obj.corners || obj.points || [];
+    if (corners.length >= 3) {
+      const shape = new THREE.Shape();
+      corners.forEach(([x, z], i) => {
+        if (i === 0) shape.moveTo(x, z);
+        else shape.lineTo(x, z);
+      });
+      shape.closePath();
+      const shapeGeo = new THREE.ShapeGeometry(shape);
+      shapeGeo.rotateX(-Math.PI / 2);
+      const shapeMesh = new THREE.Mesh(
+        shapeGeo,
+        new THREE.MeshStandardMaterial({
+          color: MESH_COLORS.floor,
+          roughness: 0.9,
+        })
+      );
+      shapeMesh.position.set(0, 0.05, 0);
+      shapeMesh.receiveShadow = true;
+      geometry.add(shapeMesh);
+    } else {
+      const width = obj.width ?? 10;
+      const depth = obj.depth ?? width;
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(width, 0.15, depth),
+        new THREE.MeshStandardMaterial({ color: MESH_COLORS.floor, roughness: 0.9 })
+      );
+      mesh.position.set(obj.position?.[0] ?? 0, 0.075, obj.position?.[1] ?? 0);
+      geometry.add(mesh);
+    }
   }
 
   if (type === "door") {

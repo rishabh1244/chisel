@@ -65,6 +65,7 @@ export default function Viewer() {
       await api.uploadBlueprint(projectId, file);
       const bp = await api.getProjectBlueprint(projectId);
       setBlueprint(bp);
+      setFile(null);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -72,9 +73,22 @@ export default function Viewer() {
     }
   }
 
-  function handleStartOver() {
-    setBlueprint(null);
-    setFile(null);
+  async function handleConvert() {
+    if (!blueprint?.original_image) return;
+    setUploading(true);
+    setError(null);
+    try {
+      await api.convertBlueprint({
+        projectId,
+        imageUrl: blueprint.original_image,
+      });
+      const bp = await api.getProjectBlueprint(projectId);
+      setBlueprint(bp);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
@@ -107,14 +121,6 @@ export default function Viewer() {
                 {project?.name || "Project"} — interactive Three.js preview
               </p>
             </div>
-            {hasModel && (
-              <button
-                onClick={handleStartOver}
-                className="text-sm text-slate-400 hover:text-white bg-slate-800 px-3 py-1.5 rounded-lg"
-              >
-                Replace model
-              </button>
-            )}
           </div>
 
           {loading ? (
@@ -127,6 +133,52 @@ export default function Viewer() {
                 objects={threejs_json}
                 height="100%"
               />
+            </div>
+          ) : blueprint?.original_image ? (
+            <div className="flex-1 min-h-0 flex items-center justify-center">
+              <div className="w-full max-w-lg bg-slate-800 border border-slate-700 rounded-2xl p-6 text-center">
+                <h2 className="text-lg font-semibold text-white">
+                  Blueprint uploaded
+                </h2>
+                <p className="mt-1 text-sm text-slate-400">
+                  Convert it into a 3D model to render it here.
+                </p>
+
+                {error && (
+                  <div className="mt-4 text-sm text-red-400 bg-red-950/50 px-3 py-2 rounded-lg">
+                    {error}
+                  </div>
+                )}
+
+                <div className="mt-4 rounded-xl overflow-hidden border border-slate-700 bg-slate-900">
+                  <img
+                    src={blueprint.original_image}
+                    alt="Blueprint"
+                    className="w-full max-h-72 object-contain"
+                  />
+                </div>
+
+                <button
+                  onClick={handleConvert}
+                  disabled={uploading}
+                  className="mt-5 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {uploading ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Box size={16} />
+                  )}
+                  {uploading
+                    ? "Converting to 3D..."
+                    : "Convert to 3D"}
+                </button>
+                {uploading && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    AI is analyzing the floor plan — this can take up to a
+                    minute.
+                  </p>
+                )}
+              </div>
             </div>
           ) : (
             <div className="flex-1 min-h-0 flex items-center justify-center">
@@ -174,8 +226,15 @@ export default function Viewer() {
                   ) : (
                     <UploadCloud size={16} />
                   )}
-                  {uploading ? "Uploading..." : "Upload blueprint"}
+                  {uploading
+                    ? "Uploading..."
+                    : "Upload blueprint"}
                 </button>
+                {uploading && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    Uploading your blueprint image...
+                  </p>
+                )}
               </div>
             </div>
           )}

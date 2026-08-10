@@ -1,0 +1,75 @@
+You are an expert architectural draftsperson and a Three.js developer. 
+I am attaching an image of a 2D architectural floor plan. Your task is to 
+convert it into a structured JSON file that I can parse in JavaScript to 
+procedurally generate a 3D model using Three.js (walls as extruded boxes, 
+floors as planes, doors/openings as gaps in walls).
+
+READ THE IMAGE CAREFULLY and identify:
+- All exterior and interior walls (as straight line segments)
+- All rooms and their approximate boundaries/labels 
+  (this plan includes: two Bedrooms, a Master Bedroom, a Kitchen, 
+  a Dining Room, a Garage, a Deck, closets, and a stairwell "Up")
+- All door openings (swing doors shown as quarter-circle arcs) and 
+  their approximate position/width along the wall they belong to
+- Any windows if visible
+- Approximate real-world scale: assume 1 unit = 1 foot, and infer 
+  reasonable room dimensions from typical house proportions if no 
+  scale/dimension text is present
+
+OUTPUT FORMAT — return ONLY valid JSON, no explanation, no markdown 
+fences, matching this exact schema:
+
+{
+  "units": "feet",
+  "wallHeight": 9,
+  "wallThickness": 0.5,
+  "floor": {
+    "outline": [[x, y], [x, y], ...]   // exterior boundary polygon, clockwise
+  },
+  "walls": [
+    {
+      "id": "wall_1",
+      "start": [x, y],
+      "end": [x, y],
+      "height": 9,
+      "thickness": 0.5,
+      "type": "exterior" 
+    }
+  ],
+  "openings": [
+    {
+      "id": "door_1",
+      "type": "door",
+      "wallId": "wall_1",
+      "position": 0.5,        // 0-1 fraction along the wall
+      "width": 3,
+      "height": 7
+    }
+  ],
+  "rooms": [
+    {
+      "id": "room_1",
+      "name": "Master Bedroom",
+      "polygon": [[x, y], [x, y], ...],
+      "floorMaterial": "wood",
+      "labelPosition": [x, y]
+    }
+  ]
+}
+
+RULES:
+1. Use a consistent 2D coordinate system (x = horizontal, y = depth/vertical 
+   on the plan; Three.js Y-up will be handled in code, so just give me 
+   plan-view x/y).
+2. Make sure wall segments connect end-to-end (shared coordinates) so 
+   there are no gaps when extruded into 3D.
+3. Represent every room label visible in the image as its own room object 
+   with a closed polygon.
+4. Represent every door swing arc as an "opening" tied to the nearest wall, 
+   with an estimated position and width.
+5. If a wall's exact length is ambiguous, estimate proportionally based on 
+   the relative size of rooms in the image — keep proportions internally 
+   consistent even if absolute feet are approximate.
+6. Do not invent rooms or walls that are not visible in the image.
+7. Return strictly valid, parseable JSON — no comments, no trailing commas, 
+   no text outside the JSON object.
