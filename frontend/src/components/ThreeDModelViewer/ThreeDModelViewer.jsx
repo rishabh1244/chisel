@@ -1,135 +1,143 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { expandBlueprint } from "./blueprintAdapter.ts";
 
 const MESH_COLORS = {
-  wall: 0xcdcdcd,
-  floor: 0x8b8b8b,
-  room: 0xabb8c3,
-  door: 0xb4530a,
+  wall: 0xd8d4cc,
+  siteFloor: 0x555555,
+  door: 0x8b5a2b,
   window: 0x9ec5ff,
 };
 
-function buildObject(type, obj) {
-  const geometry = new THREE.Group();
+/** Build a canvas-texture sprite so room names float above the floor. */
+function makeLabelSprite(text) {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  const fontSize = 48;
+  canvas.width = 512;
+  canvas.height = 128;
+  ctx.font = `${fontSize}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#f8fafc";
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
 
-  if (type === "wall") {
-    const start = new THREE.Vector3(obj.start?.[0] ?? 0, 0, obj.start?.[1] ?? 0);
-    const end = new THREE.Vector3(obj.end?.[0] ?? 0, 0, obj.end?.[1] ?? 0);
-    const height = obj.height ?? 3;
-    const length = start.distanceTo(end);
-    const thickness = obj.thickness ?? 0.2;
-    const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(length, height, thickness),
-      new THREE.MeshStandardMaterial({ color: MESH_COLORS.wall, roughness: 0.8 })
-    );
-    mesh.position.set(mid.x, height / 2, mid.z);
-    mesh.lookAt(end.x, mid.y, end.z);
-    geometry.add(mesh);
-  }
-
-  if (type === "floor" || type === "ground") {
-    const corners = obj.corners || obj.points || [];
-    if (corners.length >= 3) {
-      const shape = new THREE.Shape();
-      corners.forEach(([x, z], i) => {
-        if (i === 0) shape.moveTo(x, z);
-        else shape.lineTo(x, z);
-      });
-      shape.closePath();
-      const shapeGeo = new THREE.ShapeGeometry(shape);
-      shapeGeo.rotateX(-Math.PI / 2);
-      const shapeMesh = new THREE.Mesh(
-        shapeGeo,
-        new THREE.MeshStandardMaterial({
-          color: MESH_COLORS.floor,
-          roughness: 0.9,
-        })
-      );
-      shapeMesh.position.set(0, 0.05, 0);
-      shapeMesh.receiveShadow = true;
-      geometry.add(shapeMesh);
-    } else {
-      const width = obj.width ?? 10;
-      const depth = obj.depth ?? width;
-      const mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(width, 0.15, depth),
-        new THREE.MeshStandardMaterial({ color: MESH_COLORS.floor, roughness: 0.9 })
-      );
-      mesh.position.set(obj.position?.[0] ?? 0, 0.075, obj.position?.[1] ?? 0);
-      geometry.add(mesh);
-    }
-  }
-
-  if (type === "door") {
-    const width = obj.width ?? 1;
-    const height = obj.height ?? 2.4;
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(width, height, 0.1),
-      new THREE.MeshStandardMaterial({ color: MESH_COLORS.door, roughness: 0.6 })
-    );
-    mesh.position.set(obj.position?.[0] ?? 0, height / 2, obj.position?.[1] ?? 0);
-    geometry.add(mesh);
-  }
-
-  if (type === "window") {
-    const width = obj.width ?? 1.2;
-    const height = obj.height ?? 1.2;
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(width, height, 0.12),
-      new THREE.MeshStandardMaterial({
-        color: MESH_COLORS.window,
-        transparent: true,
-        opacity: 0.6,
-        roughness: 0.2,
-      })
-    );
-    mesh.position.set(obj.position?.[0] ?? 0, 1.5, obj.position?.[1] ?? 0);
-    geometry.add(mesh);
-  }
-
-  if (type === "room") {
-    const corners = obj.corners || obj.points || [];
-    if (corners.length >= 3) {
-      const shape = new THREE.Shape();
-      corners.forEach(([x, z], i) => {
-        if (i === 0) shape.moveTo(x, z);
-        else shape.lineTo(x, z);
-      });
-      shape.closePath();
-
-      const extrudeSettings = {
-        depth: obj.height ?? 3,
-        bevelEnabled: false,
-      };
-      const extrude = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-      const mesh = new THREE.Mesh(
-        extrude,
-        new THREE.MeshStandardMaterial({
-          color: MESH_COLORS.room,
-          transparent: true,
-          opacity: 0.35,
-          roughness: 0.7,
-        })
-      );
-      geometry.add(mesh);
-    }
-  }
-
-  return geometry;
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(4, 1, 1);
+  return sprite;
 }
 
-export default function ThreeDModelViewer({ objects, height = "100%" }) {
+function shapeFromCorners(corners) {
+  const shape = new THREE.Shape();
+  corners.forEach(([x, z], i) => {
+    if (i === 0) shape.moveTo(x, z);
+    else shape.lineTo(x, z);
+  });
+  shape.closePath();
+  return shape;
+}
+
+function buildObject(obj) {
+  const group = new THREE.Group();
+
+  switch (obj.type) {
+    case "wallSegment": {
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(obj.length, obj.height, obj.thickness),
+        new THREE.MeshStandardMaterial({ color: MESH_COLORS.wall, roughness: 0.85 })
+      );
+      mesh.position.set(...obj.position);
+      mesh.rotation.y = obj.rotationY;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      group.add(mesh);
+      break;
+    }
+
+    case "door": {
+      // Door panel set slightly off-center in the opening so it reads as a
+      // hinged door rather than a block plugging the hole.
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(obj.width * 0.9, obj.height, obj.thickness * 0.4),
+        new THREE.MeshStandardMaterial({ color: MESH_COLORS.door, roughness: 0.6 })
+      );
+      mesh.position.set(...obj.position);
+      mesh.rotation.y = obj.rotationY;
+      group.add(mesh);
+      break;
+    }
+
+    case "window": {
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(obj.width * 0.95, obj.height, obj.thickness * 0.3),
+        new THREE.MeshStandardMaterial({
+          color: MESH_COLORS.window,
+          transparent: true,
+          opacity: 0.5,
+          roughness: 0.1,
+          metalness: 0.1,
+        })
+      );
+      mesh.position.set(...obj.position);
+      mesh.rotation.y = obj.rotationY;
+      group.add(mesh);
+      break;
+    }
+
+    case "roomFloor": {
+      const shapeGeo = new THREE.ShapeGeometry(shapeFromCorners(obj.corners));
+      shapeGeo.rotateX(-Math.PI / 2);
+      const mesh = new THREE.Mesh(
+        shapeGeo,
+        new THREE.MeshStandardMaterial({ color: obj.color, roughness: 0.9 })
+      );
+      mesh.position.y = 0.03; // sits just above the site slab, avoids z-fighting
+      mesh.receiveShadow = true;
+      group.add(mesh);
+
+      if (obj.label) {
+        const sprite = makeLabelSprite(obj.label);
+        sprite.position.set(obj.labelPosition[0], 4.5, obj.labelPosition[1]);
+        group.add(sprite);
+      }
+      break;
+    }
+
+    case "siteFloor": {
+      const shapeGeo = new THREE.ShapeGeometry(shapeFromCorners(obj.corners));
+      shapeGeo.rotateX(-Math.PI / 2);
+      const mesh = new THREE.Mesh(
+        shapeGeo,
+        new THREE.MeshStandardMaterial({ color: MESH_COLORS.siteFloor, roughness: 1 })
+      );
+      mesh.receiveShadow = true;
+      group.add(mesh);
+      break;
+    }
+
+    default:
+      break;
+  }
+
+  return group;
+}
+
+export default function ThreeDModelViewer({ blueprint, height = "100%" }) {
   const containerRef = useRef(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || !blueprint) return;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0f172a);
+    scene.fog = new THREE.Fog(0x0f172a, 60, 140);
 
     const camera = new THREE.PerspectiveCamera(
       55,
@@ -137,7 +145,7 @@ export default function ThreeDModelViewer({ objects, height = "100%" }) {
       0.1,
       1000
     );
-    camera.position.set(14, 12, 14);
+    camera.position.set(35, 35, 45);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
@@ -148,25 +156,23 @@ export default function ThreeDModelViewer({ objects, height = "100%" }) {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.target.set(0, 1, 0);
+    controls.target.set(15, 1, 15);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-    dirLight.position.set(15, 25, 10);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
+    dirLight.position.set(30, 50, 20);
     dirLight.castShadow = true;
+    dirLight.shadow.mapSize.set(2048, 2048);
     scene.add(dirLight);
 
-    const grid = new THREE.GridHelper(30, 30, 0x475569, 0x334155);
+    const grid = new THREE.GridHelper(120, 60, 0x475569, 0x334155);
     scene.add(grid);
 
     const group = new THREE.Group();
     try {
-      const list = Array.isArray(objects) ? objects : objects?.objects || [];
-      list.forEach((obj) => {
-        const type = String(obj.type || "").toLowerCase();
-        const built = buildObject(type, obj);
-        group.add(built);
-      });
+      const objects = expandBlueprint(blueprint);
+      objects.forEach((obj) => group.add(buildObject(obj)));
+      setError(null);
     } catch (e) {
       setError(e.message);
     }
@@ -194,7 +200,7 @@ export default function ThreeDModelViewer({ objects, height = "100%" }) {
         renderer.domElement.parentNode.removeChild(renderer.domElement);
       }
     };
-  }, [objects]);
+  }, [blueprint]);
 
   return (
     <div ref={containerRef} style={{ width: "100%", height }} className="relative">

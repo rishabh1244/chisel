@@ -75,6 +75,39 @@ export const api = {
   getProjectTeam: (projectId) => request(`/api/projects/${projectId}/team`),
   createIssue: (data) =>
     request('/api/issues/createIssue', { method: 'POST', body: data }),
+  async createIssueWithImage({ projectId, title, description, image, assignedTo, status }) {
+    const token = getToken()
+    const formData = new FormData()
+    formData.append('projectId', projectId)
+    formData.append('title', title)
+    formData.append('description', description || '')
+    if (assignedTo) formData.append('assignedTo', assignedTo)
+    if (status) formData.append('status', status)
+    if (image) formData.append('image', image)
+
+    const res = await fetch(`${API_URL}/api/issues/createIssue`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    })
+
+    let data = {}
+    try {
+      data = await res.json()
+    } catch {
+      data = {}
+    }
+
+    if (!res.ok) {
+      const error = new Error(
+        data.error || data.message || `Request failed with status ${res.status}`
+      )
+      error.status = res.status
+      throw error
+    }
+
+    return data
+  },
   editIssue: (data) =>
     request('/api/issues/editIssue', { method: 'POST', body: data }),
 

@@ -5,7 +5,6 @@ import path from 'path'
 import fs from 'fs'
 import { authenticate } from '../middleware/auth'
 import { blueprintToJson } from '../services/llm/blueprintToJson'
-import { normalizeToThreeJs } from '../services/llm/normalizeToThreeJs'
 import { uploadBlueprintImage } from '../services/blueprint_handler/uploadBlueprint'
 import { getProjectBlueprint } from '../services/blueprint_handler/getBlueprint'
 import Blueprint_Model from '../models/Blueprint'
@@ -62,7 +61,6 @@ router.post('/convert', upload.single('image'), async (req: Request, res: Respon
       typeof req.body.description === 'string' ? req.body.description : undefined
 
     const result = await blueprintToJson({ imagePath, imageUrl, description })
-    const threejs = normalizeToThreeJs(result)
 
     if (imagePath) {
       fs.unlink(imagePath, () => {})
@@ -73,7 +71,6 @@ router.post('/convert', upload.single('image'), async (req: Request, res: Respon
     let blueprint
     if (existing) {
       existing.blueprint_json = result
-      existing.threejs_json = threejs
       blueprint = await existing.save()
     } else {
       blueprint = await Blueprint_Model.create({
@@ -81,7 +78,6 @@ router.post('/convert', upload.single('image'), async (req: Request, res: Respon
         original_image: imageUrl,
         uploaded_by: new Types.ObjectId(req.user!._id),
         blueprint_json: result,
-        threejs_json: threejs,
         created_at: new Date(),
       })
     }
@@ -89,7 +85,6 @@ router.post('/convert', upload.single('image'), async (req: Request, res: Respon
     res.json({
       blueprint_id: blueprint._id,
       blueprint_json: result,
-      threejs_json: threejs,
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to convert blueprint'

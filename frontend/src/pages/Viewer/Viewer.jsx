@@ -17,10 +17,11 @@ export default function Viewer() {
   const [error, setError] = useState(null);
   const [file, setFile] = useState(null);
 
-  const threejs_json = blueprint?.threejs_json;
+  const blueprint_json = blueprint?.blueprint_json;
   const hasModel = Boolean(
-    threejs_json &&
-      (Array.isArray(threejs_json.objects) && threejs_json.objects.length > 0)
+    blueprint_json &&
+      ((Array.isArray(blueprint_json.walls) && blueprint_json.walls.length > 0) ||
+        (Array.isArray(blueprint_json.rooms) && blueprint_json.rooms.length > 0))
   );
 
   useEffect(() => {
@@ -130,7 +131,7 @@ export default function Viewer() {
           ) : hasModel ? (
             <div className="flex-1 min-h-0 bg-slate-800 rounded-xl overflow-hidden">
               <ThreeDModelViewer
-                objects={threejs_json}
+                blueprint={blueprint_json}
                 height="100%"
               />
             </div>

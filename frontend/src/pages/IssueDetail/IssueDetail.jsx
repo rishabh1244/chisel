@@ -14,6 +14,7 @@ import {
   Tag,
   Check,
   Zap,
+  Trash2,
 } from "lucide-react";
 import { api } from "../../api/client";
 import DashboardLayout from "../../components/DashboardLayout/DashboardLayout.jsx";
@@ -112,7 +113,23 @@ function DetailRow({ icon: Icon, label, value, tone }) {
   );
 }
 
-function CommentsSection({ comments, loading }) {
+function CommentsSection({
+  comments,
+  loading,
+  text,
+  setText,
+  submitting,
+  error,
+  onAddComment,
+  onDeleteComment,
+  currentUser,
+}) {
+  const isOwnComment = (comment) => {
+    const myId = String(currentUser?._id || "");
+    const authorId = String(comment.created_by?._id ?? comment.created_by || "");
+    return Boolean(myId) && myId === authorId;
+  };
+
   return (
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
       <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200">
@@ -120,6 +137,31 @@ function CommentsSection({ comments, loading }) {
           <MessageSquare size={16} className="text-slate-400" />
           Comments ({comments.length})
         </h3>
+      </div>
+
+      <div className="p-4 border-b border-slate-100">
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={2}
+          placeholder="Add a comment to this issue..."
+          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
+        />
+        {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+        <div className="mt-2 flex justify-end">
+          <button
+            onClick={() => onAddComment(text)}
+            disabled={submitting || !text.trim()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {submitting ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <MessageSquare size={15} />
+            )}
+            Comment
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -134,7 +176,7 @@ function CommentsSection({ comments, loading }) {
           </p>
         </div>
       ) : (
-        <div className="p-4 space-y-3">
+        <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
           {comments.map((comment) => (
               <div
                 key={comment._id}
@@ -155,9 +197,20 @@ function CommentsSection({ comments, loading }) {
                     <span className="text-sm font-semibold text-slate-900 truncate">
                       {comment.created_by?.username || "Unknown user"}
                     </span>
-                    <span className="text-xs text-slate-400 shrink-0">
-                      {timeAgo(comment.created_at)}
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs text-slate-400">
+                        {timeAgo(comment.created_at)}
+                      </span>
+                      {isOwnComment(comment) && (
+                        <button
+                          onClick={() => onDeleteComment(comment._id)}
+                          className="text-xs text-slate-400 hover:text-red-500"
+                          title="Delete comment"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <p className="mt-1 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
                     {comment.content}
@@ -198,6 +251,9 @@ export default function IssueDetail() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [commentError, setCommentError] = useState("");
   const [actionError, setActionError] = useState("");
   const [error, setError] = useState("");
 
@@ -315,6 +371,35 @@ export default function IssueDetail() {
       setActionError(err.message);
     } finally {
       setActing(false);
+    }
+  };
+
+  const handleAddComment = async () => {
+    const content = commentText.trim();
+    if (!content) return;
+    setCommentSubmitting(true);
+    setCommentError("");
+    try {
+      await api.createComment({ issueId, content });
+      setCommentText("");
+      const data = await api.getIssueComments(issueId);
+      setComments(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setCommentError(err.message);
+    } finally {
+      setCommentSubmitting(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    setCommentError("");
+    try {
+      await api.deleteComment(commentId);
+      setComments((prev) =>
+        prev.filter((c) => String(c._id) !== String(commentId))
+      );
+    } catch (err) {
+      setCommentError(err.message);
     }
   };
 

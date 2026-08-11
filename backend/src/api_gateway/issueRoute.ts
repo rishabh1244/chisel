@@ -1,16 +1,44 @@
 import { Router, Request, Response } from 'express'
+import multer from 'multer'
+import path from 'path'
+import fs from 'fs'
 import { authenticate } from '../middleware/auth'
 import { authorizeProject } from '../middleware/authorizeProject'
 import { createIssue } from '../services/issue_handler/createIssue'
 import { editIssue } from '../services/issue_handler/editIssue'
 import { getIssuesForProject } from '../services/issue_handler/getIssues'
 import { commitChisel } from '../services/chisel_handler/commitChisel'
+import cloudinary from '../config/cloudinary'
 import Project from '../models/Project'
 import { Types } from 'mongoose'
 
 const router = Router()
 
 router.use(authenticate)
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(__dirname, '..', '..', 'tmp')
+    fs.mkdirSync(dir, { recursive: true })
+    cb(null, dir)
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.png'
+    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`)
+  },
+})
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!/image\/(png|jpe?g|webp|gif|bmp)/.test(file.mimetype)) {
+      cb(new Error('Only image files are allowed'))
+      return
+    }
+    cb(null, true)
+  },
+})
 
 router.get('/project/:projectId', authorizeProject, async (req: Request, res: Response) => {
   try {
@@ -22,7 +50,7 @@ router.get('/project/:projectId', authorizeProject, async (req: Request, res: Re
   }
 })
 
-router.post('/createIssue', authorizeProject, async (req: Request, res: Response) => {
+router.post('/createIssue', upload.single('image'), authorizeProject, async (req: Request, res: Response) => {
   try {
     const { title, description, assignedTo, status, imageLink } = req.body
     const projectId = req.body.projectId || req.params.projectId || req.query.projectId
@@ -32,11 +60,25 @@ router.post('/createIssue', authorizeProject, async (req: Request, res: Response
       return
     }
 
+    let issueImageLink = typeof imageLink === 'string' ? imageLink : ''
+
+    if (req.file) {
+      try {
+        const uploaded = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'chisel/issues',
+          resource_type: 'image',
+        })
+        issueImageLink = uploaded.secure_url
+      } finally {
+        fs.unlink(req.file.path, () => {})
+      }
+    }
+
     const issue = await createIssue({
       projectId: new Types.ObjectId(projectId),
       title,
       description: description || '',
-      imageLink: imageLink || '',
+      imageLink: issueImageLink,
       createdBy: new Types.ObjectId(req.user!._id),
       assignedTo: assignedTo ? new Types.ObjectId(assignedTo) : null,
       status: status || 'OPEN',

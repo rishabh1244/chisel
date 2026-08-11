@@ -14,6 +14,7 @@ import { useAuth } from "../../context/AuthContext";
 import { api } from "../../api/client";
 import { sampleImageFor } from "../../utils/sampleImages";
 import DashboardLayout from "../../components/DashboardLayout/DashboardLayout.jsx";
+import { UploadCloud, X, ImagePlus, Plus } from "lucide-react";
 
 const tabs = ["Overview", "Issues", "Chisels", "Files", "Team", "Settings"];
 
@@ -808,6 +809,171 @@ function ChiselList({ chisels, projectId }) {
   );
 }
 
+// ------------------------------- CREATE ISSUE ------------------------------
+
+function CreateIssueModal({ open, onClose, projectId, onCreated }) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [image, setImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!open) {
+      setTitle("");
+      setDescription("");
+      setImage(null);
+      setImagePreview(null);
+      setError(null);
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  function handleImageChange(e) {
+    const file = e.target.files?.[0] || null;
+    setImage(file);
+    setError(null);
+    if (file) {
+      setImagePreview(URL.createObjectURL(file));
+    } else {
+      setImagePreview(null);
+    }
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!title.trim()) {
+      setError("Title is required");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await api.createIssueWithImage({
+        projectId,
+        title: title.trim(),
+        description: description.trim(),
+        image,
+      });
+      onCreated?.();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h3 className="text-lg font-semibold text-slate-900">Create Issue</h3>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Title <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Fix leaking roof"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Description
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              placeholder="Describe the problem or required work..."
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Image
+            </label>
+            {imagePreview ? (
+              <div className="relative">
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="w-full h-40 object-cover rounded-lg border border-slate-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImage(null);
+                    setImagePreview(null);
+                  }}
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-slate-900/70 text-white flex items-center justify-center hover:bg-slate-900"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center gap-2 border border-dashed border-slate-300 rounded-lg px-4 py-6 cursor-pointer text-slate-400 hover:border-amber-400 hover:text-amber-500 transition-colors">
+                <ImagePlus size={24} />
+                <span className="text-sm">Click to attach an image</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageChange}
+                />
+              </label>
+            )}
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {submitting ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <UploadCloud size={16} />
+              )}
+              {submitting ? "Creating..." : "Create issue"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ------------------------------- MAIN PAGE ----------------------------------
 
 export default function Dashboard() {
@@ -844,6 +1010,8 @@ export default function Dashboard() {
   const [issuesLoading, setIssuesLoading] = useState(false);
   const [chisels, setChisels] = useState([]);
   const [chiselsLoading, setChiselsLoading] = useState(false);
+  const [showCreateIssue, setShowCreateIssue] = useState(false);
+  const [issuesRefreshKey, setIssuesRefreshKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -890,7 +1058,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [currentProject?._id]);
+  }, [currentProject?._id, issuesRefreshKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -990,13 +1158,41 @@ export default function Dashboard() {
             />
 
             <div className="p-6 space-y-6">
-              {issues.length === 0 ? (
+              {issues.length === 0 && activeTab !== "Issues" ? (
                 <EmptyState
                   title="No issues yet"
                   message="Create the first issue to start tracking problems, changes and project activity."
                 />
               ) : activeTab === "Issues" ? (
-                <IssueList issues={issues} projectId={displayProject._id} />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-slate-900">
+                      Issues
+                      {issues.length > 0 && (
+                        <span className="ml-2 text-xs font-normal text-slate-400">
+                          {issues.length} total
+                        </span>
+                      )}
+                    </h3>
+                    <button
+                      onClick={() => setShowCreateIssue(true)}
+                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-colors"
+                    >
+                      <Plus size={16} />
+                      New Issue
+                    </button>
+                  </div>
+                  {issues.length === 0 ? (
+                    <EmptyState
+                      title="No issues yet"
+                      message="Create the first issue to start tracking problems, changes and project activity."
+                      cta="Create an issue"
+                      onCta={() => setShowCreateIssue(true)}
+                    />
+                  ) : (
+                    <IssueList issues={issues} projectId={displayProject._id} />
+                  )}
+                </div>
               ) : activeTab === "Chisels" ? (
                 <ChiselList
                   chisels={chisels}
@@ -1023,6 +1219,16 @@ export default function Dashboard() {
           )}
         </div>
       )}
+
+      <CreateIssueModal
+        open={showCreateIssue}
+        onClose={() => setShowCreateIssue(false)}
+        projectId={displayProject?._id}
+        onCreated={() => {
+          setShowCreateIssue(false);
+          setIssuesRefreshKey((k) => k + 1);
+        }}
+      />
     </DashboardLayout>
   );
 }
