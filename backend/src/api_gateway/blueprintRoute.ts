@@ -1,8 +1,6 @@
 import { Router, Request, Response } from 'express'
 import { Types } from 'mongoose'
 import multer from 'multer'
-import path from 'path'
-import fs from 'fs'
 import { authenticate } from '../middleware/auth'
 import { blueprintToJson } from '../services/llm/blueprintToJson'
 import { uploadBlueprintImage } from '../services/blueprint_handler/uploadBlueprint'
@@ -13,20 +11,8 @@ const router = Router()
 
 router.use(authenticate)
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '..', '..', 'tmp')
-    fs.mkdirSync(dir, { recursive: true })
-    cb(null, dir)
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.png'
-    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`)
-  },
-})
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (!/image\/(png|jpe?g|webp|gif|bmp)/.test(file.mimetype)) {
@@ -104,11 +90,10 @@ router.post(
 
       const blueprint = await uploadBlueprintImage({
         projectId,
-        imagePath: req.file.path,
+        imageBuffer: req.file.buffer,
+        mimeType: req.file.mimetype,
         uploadedBy: req.user!._id,
       })
-
-      fs.unlink(req.file.path, () => {})
 
       res.json({
         blueprint_id: blueprint._id,

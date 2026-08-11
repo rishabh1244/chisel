@@ -1,7 +1,5 @@
 import { Router, Request, Response } from 'express'
 import multer from 'multer'
-import path from 'path'
-import fs from 'fs'
 import { authenticate } from '../middleware/auth'
 import { authorizeProject } from '../middleware/authorizeProject'
 import { createIssue } from '../services/issue_handler/createIssue'
@@ -16,20 +14,8 @@ const router = Router()
 
 router.use(authenticate)
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '..', '..', 'tmp')
-    fs.mkdirSync(dir, { recursive: true })
-    cb(null, dir)
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.png'
-    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`)
-  },
-})
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (!/image\/(png|jpe?g|webp|gif|bmp)/.test(file.mimetype)) {
@@ -63,15 +49,15 @@ router.post('/createIssue', upload.single('image'), authorizeProject, async (req
     let issueImageLink = typeof imageLink === 'string' ? imageLink : ''
 
     if (req.file) {
-      try {
-        const uploaded = await cloudinary.uploader.upload(req.file.path, {
+      const mimeType = req.file.mimetype || 'image/png'
+      const uploaded = await cloudinary.uploader.upload(
+        `data:${mimeType};base64,${req.file.buffer.toString('base64')}`,
+        {
           folder: 'chisel/issues',
           resource_type: 'image',
-        })
-        issueImageLink = uploaded.secure_url
-      } finally {
-        fs.unlink(req.file.path, () => {})
-      }
+        }
+      )
+      issueImageLink = uploaded.secure_url
     }
 
     const issue = await createIssue({

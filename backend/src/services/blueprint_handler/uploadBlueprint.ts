@@ -5,20 +5,24 @@ import { Types } from 'mongoose'
 
 export async function uploadBlueprintImage(params: {
   projectId: string
-  imagePath: string
+  imageBuffer: Buffer
+  mimeType: string
   uploadedBy: string
 }) {
-  const { projectId, imagePath } = params
+  const { projectId, imageBuffer, mimeType } = params
 
   const project = await Project.findOne({ _id: projectId })
   if (!project) {
     throw new Error('Project not found')
   }
 
-  const uploaded = await cloudinary.uploader.upload(imagePath, {
-    folder: 'chisel/blueprints',
-    resource_type: 'image',
-  })
+  const uploaded = await cloudinary.uploader.upload(
+    `data:${mimeType};base64,${imageBuffer.toString('base64')}`,
+    {
+      folder: 'chisel/blueprints',
+      resource_type: 'image',
+    }
+  )
 
   const existing = await Blueprint.findOne({ project_id: projectId })
 

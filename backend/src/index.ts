@@ -42,19 +42,6 @@ app.use((req, res, next) => {
   next()
 })
 
-// Health check for load balancers / monitoring
-app.get('/health', (req, res) => {
-  const dbState = mongoose.connection.readyState // 0=disconnected 1=connected 2=connecting 3=disconnecting
-  const states = ['disconnected', 'connected', 'connecting', 'disconnecting']
-  res.status(dbState === 1 ? 200 : 503).json({
-    status: dbState === 1 ? 'ok' : 'unavailable',
-    db: states[dbState] || 'unknown',
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
-  })
-})
-
-// Seed a demo account for quick logins
 async function seedDemoUser() {
   try {
     const existing = await User.findOne({ username: 'demo' })
@@ -69,6 +56,39 @@ async function seedDemoUser() {
   }
 }
 
+const dbReady = connectDB()
+  .then(() => seedDemoUser())
+  .catch((error) => {
+    console.error('Failed to connect to database:', error)
+    throw error
+  })
+
+app.use(async (req, res, next) => {
+  if (req.path === '/health') {
+    next()
+    return
+  }
+
+  try {
+    await dbReady
+    next()
+  } catch {
+    res.status(503).json({ error: 'Database unavailable' })
+  }
+})
+
+// Health check for load balancers / monitoring
+app.get('/health', (req, res) => {
+  const dbState = mongoose.connection.readyState // 0=disconnected 1=connected 2=connecting 3=disconnecting
+  const states = ['disconnected', 'connected', 'connecting', 'disconnecting']
+  res.status(dbState === 1 ? 200 : 503).json({
+    status: dbState === 1 ? 'ok' : 'unavailable',
+    db: states[dbState] || 'unknown',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  })
+})
+
 app.use('/api/auth', authRoutes)
 app.use('/api/workspace', workspaceRoutes)
 app.use('/api/users', usersRoutes)
@@ -78,33 +98,32 @@ app.use('/api/comments', commentRoutes)
 app.use('/api/blueprint', blueprintRoutes)
 app.use('/api/chisel', chiselRoutes)
 
-async function start() {
-  await connectDB()
-  seedDemoUser()
+export default app
 
-  const server = app.listen(port, host, () => {
-    console.log(`Server running on ${host}:${port}`)
-  })
-
-  // Graceful shutdown so containers restart cleanly (SIGTERM/SIGINT)
-  const shutdown = (signal: string) => {
-    console.log(`${signal} received, shutting down gracefully...`)
-    server.close(() => {
-      console.log('HTTP server closed')
-      mongoose.connection.close(false).then(() => {
-        console.log('MongoDB connection closed')
-        process.exit(0)
+if (!process.env.VERCEL) {
+  dbReady
+    .then(() => {
+      const server = app.listen(port, host, () => {
+        console.log(`Server running on ${host}:${port}`)
       })
+
+      const shutdown = (signal: string) => {
+        console.log(`${signal} received, shutting down gracefully...`)
+        server.close(() => {
+          console.log('HTTP server closed')
+          mongoose.connection.close(false).then(() => {
+            console.log('MongoDB connection closed')
+            process.exit(0)
+          })
+        })
+        setTimeout(() => process.exit(1), 10000).unref()
+      }
+
+      process.on('SIGINT', () => shutdown('SIGINT'))
+      process.on('SIGTERM', () => shutdown('SIGTERM'))
     })
-    // Force exit if things stall
-    setTimeout(() => process.exit(1), 10000).unref()
-  }
-
-  process.on('SIGINT', () => shutdown('SIGINT'))
-  process.on('SIGTERM', () => shutdown('SIGTERM'))
+    .catch((err) => {
+      console.error('Failed to start server:', err)
+      process.exit(1)
+    })
 }
-
-start().catch((err) => {
-  console.error('Failed to start server:', err)
-  process.exit(1)
-})
