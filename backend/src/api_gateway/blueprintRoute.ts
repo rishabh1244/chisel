@@ -37,7 +37,7 @@ const upload = multer({
   },
 })
 
-router.post('/convert', upload.single('image'), async (req: Request, res: Response) => {
+router.post('/convert', async (req: Request, res: Response) => {
   try {
     const projectId = String(req.body.projectId || '')
 
@@ -46,25 +46,18 @@ router.post('/convert', upload.single('image'), async (req: Request, res: Respon
       return
     }
 
-    const imagePath = req.file?.path
     const imageUrl =
-      typeof req.body.imageUrl === 'string' ? req.body.imageUrl : undefined
+      typeof req.body.imageUrl === 'string' ? req.body.imageUrl.trim() : ''
 
-    if (!imagePath && !imageUrl) {
-      res.status(400).json({
-        error: 'A blueprint image is required (multipart "image" file or imageUrl)',
-      })
+    if (!imageUrl) {
+      res.status(400).json({ error: 'A blueprint imageUrl is required' })
       return
     }
 
     const description =
       typeof req.body.description === 'string' ? req.body.description : undefined
 
-    const result = await blueprintToJson({ imagePath, imageUrl, description })
-
-    if (imagePath) {
-      fs.unlink(imagePath, () => {})
-    }
+    const result = await blueprintToJson({ imageUrl, description })
 
     const existing = await Blueprint_Model.findOne({ project_id: projectId })
 

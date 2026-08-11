@@ -1,5 +1,3 @@
-import fs from 'fs'
-import path from 'path'
 import { SYSTEM_PROMPT } from './prompt'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
@@ -11,19 +9,6 @@ const DEFAULT_MODELS = [
   'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
   'nvidia/nemotron-nano-12b-v2-vl:free',
 ]
-
-function mimeFromPath(filePath: string): string {
-  const ext = path.extname(filePath).toLowerCase()
-  const map: Record<string, string> = {
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.webp': 'image/webp',
-    '.gif': 'image/gif',
-    '.bmp': 'image/bmp',
-  }
-  return map[ext] || 'image/png'
-}
 
 function extractJson(text: string): Record<string, unknown> {
   const cleaned = text.replace(/```json?/gi, '').replace(/```/g, '').trim()
@@ -41,24 +26,15 @@ function extractJson(text: string): Record<string, unknown> {
   return parsed as Record<string, unknown>
 }
 
-async function imageToDataUrl(imagePath?: string, imageUrl?: string): Promise<string> {
-  if (imagePath) {
-    const buffer = fs.readFileSync(imagePath)
-    return `data:${mimeFromPath(imagePath)};base64,${buffer.toString('base64')}`
+async function imageToDataUrl(imageUrl: string): Promise<string> {
+  const res = await fetch(imageUrl)
+  if (!res.ok) {
+    throw new Error(`Failed to fetch image from ${imageUrl}: ${res.status}`)
   }
-
-  if (imageUrl) {
-    const res = await fetch(imageUrl)
-    if (!res.ok) {
-      throw new Error(`Failed to fetch image from ${imageUrl}: ${res.status}`)
-    }
-    const buffer = Buffer.from(await res.arrayBuffer())
-    const contentType = res.headers.get('content-type') || 'image/png'
-    const mimeType = contentType.startsWith('image/') ? contentType : 'image/png'
-    return `data:${mimeType};base64,${buffer.toString('base64')}`
-  }
-
-  throw new Error('A blueprint image (imagePath or imageUrl) is required')
+  const buffer = Buffer.from(await res.arrayBuffer())
+  const contentType = res.headers.get('content-type') || 'image/png'
+  const mimeType = contentType.startsWith('image/') ? contentType : 'image/png'
+  return `data:${mimeType};base64,${buffer.toString('base64')}`
 }
 
 async function callOpenRouter(opts: {
@@ -134,8 +110,7 @@ function parseBlueprintJson(text: string): Record<string, unknown> {
 }
 
 export async function blueprintToJson(opts: {
-  imagePath?: string
-  imageUrl?: string
+  imageUrl: string
   description?: string
 }): Promise<Record<string, unknown>> {
   const apiKey = process.env.OPENROUTER_API_KEY || ''
@@ -145,9 +120,9 @@ export async function blueprintToJson(opts: {
     throw new Error('OPENROUTER_API_KEY is not set in the environment')
   }
 
-  const { imagePath, imageUrl, description } = opts
+  const { imageUrl, description } = opts
 
-  const dataUrl = await imageToDataUrl(imagePath, imageUrl)
+  const dataUrl = await imageToDataUrl(imageUrl)
 
   const models = configuredModel
     ? configuredModel
