@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import { SYSTEM_PROMPT } from './prompt'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 const REQUEST_TIMEOUT_MS = 60000
@@ -10,22 +11,6 @@ const DEFAULT_MODELS = [
   'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
   'nvidia/nemotron-nano-12b-v2-vl:free',
 ]
-
-function loadPrompt(): string {
-  const candidates = [
-    path.join(__dirname, 'prompt.txt'),
-    path.join(process.cwd(), 'src', 'services', 'llm', 'prompt.txt'),
-    path.join(__dirname, '..', '..', '..', 'src', 'services', 'llm', 'prompt.txt'),
-  ]
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
-      return fs.readFileSync(candidate, 'utf-8')
-    }
-  }
-  throw new Error('Could not locate src/services/llm/prompt.txt')
-}
-
-const SYSTEM_PROMPT = loadPrompt()
 
 function mimeFromPath(filePath: string): string {
   const ext = path.extname(filePath).toLowerCase()

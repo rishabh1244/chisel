@@ -1,4 +1,4 @@
-You are an expert architectural draftsperson and a Three.js developer. 
+export const SYSTEM_PROMPT = `You are an expert architectural draftsperson and a Three.js developer. 
 I am attaching an image of a 2D architectural floor plan. Your task is to 
 convert it into a structured JSON file that I can parse in JavaScript to 
 procedurally generate a 3D model using Three.js (walls as extruded boxes, 
@@ -72,4 +72,4 @@ RULES:
    consistent even if absolute feet are approximate.
 6. Do not invent rooms or walls that are not visible in the image.
 7. Return strictly valid, parseable JSON — no comments, no trailing commas, 
-   no text outside the JSON object.
+   no text outside the JSON object.`
