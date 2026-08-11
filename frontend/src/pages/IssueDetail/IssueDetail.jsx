@@ -126,7 +126,7 @@ function CommentsSection({
 }) {
   const isOwnComment = (comment) => {
     const myId = String(currentUser?._id || "");
-    const authorId = String(comment.created_by?._id ?? comment.created_by || "");
+    const authorId = String(comment.created_by?._id ?? (comment.created_by || ""));
     return Boolean(myId) && myId === authorId;
   };
 
