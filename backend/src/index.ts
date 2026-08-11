@@ -1,6 +1,7 @@
 import dotenv from 'dotenv'
 dotenv.config()
 import express from 'express'
+import mongoose from 'mongoose'
 import connectDB from './config/db'
 import authRoutes from './api_gateway/auth'
 import workspaceRoutes from './api_gateway/workspace'
@@ -14,15 +15,24 @@ import bcrypt from 'bcryptjs'
 import User from './models/User'
 
 const app = express()
-const port = process.env.PORT || 3000
+const port = Number(process.env.PORT) || 3000
+const host = process.env.HOST || '0.0.0.0'
 
-connectDB()
-
+app.disable('x-powered-by')
 app.use(express.json())
 
-// CORS: allow the frontend dev server to talk to this API
+// CORS: allow the frontend to call this API
+const allowedOrigins = (process.env.CORS_ORIGIN || '*')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*')
+  const origin = req.headers.origin
+  const allow = allowedOrigins.includes('*') || (origin && allowedOrigins.includes(origin))
+  if (allow) {
+    res.header('Access-Control-Allow-Origin', allowedOrigins.includes('*') ? '*' : origin)
+  }
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
   if (req.method === 'OPTIONS') {
@@ -30,6 +40,18 @@ app.use((req, res, next) => {
     return
   }
   next()
+})
+
+// Health check for load balancers / monitoring
+app.get('/health', (req, res) => {
+  const dbState = mongoose.connection.readyState // 0=disconnected 1=connected 2=connecting 3=disconnecting
+  const states = ['disconnected', 'connected', 'connecting', 'disconnecting']
+  res.status(dbState === 1 ? 200 : 503).json({
+    status: dbState === 1 ? 'ok' : 'unavailable',
+    db: states[dbState] || 'unknown',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  })
 })
 
 // Seed a demo account for quick logins
@@ -46,7 +68,6 @@ async function seedDemoUser() {
     console.error('Failed to seed demo user:', error)
   }
 }
-seedDemoUser()
 
 app.use('/api/auth', authRoutes)
 app.use('/api/workspace', workspaceRoutes)
@@ -57,6 +78,33 @@ app.use('/api/comments', commentRoutes)
 app.use('/api/blueprint', blueprintRoutes)
 app.use('/api/chisel', chiselRoutes)
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`)
+async function start() {
+  await connectDB()
+  seedDemoUser()
+
+  const server = app.listen(port, host, () => {
+    console.log(`Server running on ${host}:${port}`)
+  })
+
+  // Graceful shutdown so containers restart cleanly (SIGTERM/SIGINT)
+  const shutdown = (signal: string) => {
+    console.log(`${signal} received, shutting down gracefully...`)
+    server.close(() => {
+      console.log('HTTP server closed')
+      mongoose.connection.close(false).then(() => {
+        console.log('MongoDB connection closed')
+        process.exit(0)
+      })
+    })
+    // Force exit if things stall
+    setTimeout(() => process.exit(1), 10000).unref()
+  }
+
+  process.on('SIGINT', () => shutdown('SIGINT'))
+  process.on('SIGTERM', () => shutdown('SIGTERM'))
+}
+
+start().catch((err) => {
+  console.error('Failed to start server:', err)
+  process.exit(1)
 })

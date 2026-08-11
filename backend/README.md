@@ -216,6 +216,53 @@ npm run dev
 
 ---
 
+## Deployment
+
+### Environment Variables
+
+All configuration comes from environment variables. Copy `.env.example` to `.env` and fill in the values:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MONGODB_URI` | Yes | MongoDB connection string (Atlas or local) |
+| `JWT_SECRET` | Yes | Secret used to sign auth tokens |
+| `CLOUDINARY_CLOUD_NAME` | Yes | Cloudinary account cloud name |
+| `CLOUDINARY_API_KEY` | Yes | Cloudinary API key |
+| `CLOUDINARY_SECRET` | Yes | Cloudinary API secret |
+| `OPENROUTER_API_KEY` | Yes | OpenRouter API key for blueprint AI conversion |
+| `PORT` | No | HTTP port (default `3000`) |
+| `HOST` | No | Bind address (default `0.0.0.0`) |
+| `CORS_ORIGIN` | No | Comma-separated allowed origins (default `*`) |
+| `OPENROUTER_MODEL` | No | Comma-separated model list (defaults to a set of free models) |
+
+### Local Production Build
+
+```bash
+npm install
+npm run build
+npm start
+```
+
+### Docker
+
+```bash
+docker build -t chisel-backend .
+docker run -p 3000:3000 \
+  -e MONGODB_URI="mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/chisel_backend" \
+  -e JWT_SECRET="<secret>" \
+  -e CLOUDINARY_CLOUD_NAME="<cloud>" \
+  -e CLOUDINARY_API_KEY="<key>" \
+  -e CLOUDINARY_SECRET="<secret>" \
+  -e OPENROUTER_API_KEY="sk-or-v1-<key>" \
+  chisel-backend
+```
+
+### Health Check
+
+`GET /health` returns `200 {"status":"ok","db":"connected"}` when ready, or `503` while the database is unavailable. Use it for load balancer or platform health checks.
+
+---
+
 ## License
 
 MIT License.
