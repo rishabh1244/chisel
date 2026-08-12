@@ -1,6 +1,7 @@
 import mongoose, { Types } from 'mongoose'
 import dotenv from 'dotenv'
-dotenv.config()
+import path from 'path'
+dotenv.config({ path: path.resolve(__dirname, '..', '..', '.env') })
 import User from '../models/User'
 import Project from '../models/Project'
 import Blueprint from '../models/Blueprint'
