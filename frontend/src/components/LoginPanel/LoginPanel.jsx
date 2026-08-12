@@ -96,9 +96,6 @@ function LoginPanel({ mode = 'login', standalone = false }) {
 
         {error && <div className="login-card__error">{error}</div>}
 
-        <button className="btn btn--primary btn--block btn--lg" type="submit" disabled={loading}>
-          {loading ? (formMode === 'login' ? 'Logging in…' : 'Creating account…') : formMode === 'login' ? 'Log in' : 'Sign up'}
-        </button>
         <button
           type="button"
           className="btn login-card__demo btn--block"
@@ -106,6 +103,9 @@ function LoginPanel({ mode = 'login', standalone = false }) {
           disabled={loading}
         >
           Continue with Demo Account
+        </button>
+        <button className="btn btn--primary btn--block btn--lg" type="submit" disabled={loading}>
+          {loading ? (formMode === 'login' ? 'Logging in…' : 'Creating account…') : formMode === 'login' ? 'Log in' : 'Sign up'}
         </button>
 
         <p className="login-card__signup">
