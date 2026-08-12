@@ -56,12 +56,20 @@ async function seedDemoUser() {
   }
 }
 
-const dbReady = connectDB()
-  .then(() => seedDemoUser())
-  .catch((error) => {
-    console.error('Failed to connect to database:', error)
-    throw error
-  })
+let dbConnectPromise: Promise<void> | null = null
+
+async function ensureDb(): Promise<void> {
+  if (mongoose.connection.readyState === 1) return
+  if (!dbConnectPromise) {
+    dbConnectPromise = connectDB()
+      .then(() => seedDemoUser())
+      .catch((error) => {
+        dbConnectPromise = null
+        throw error
+      })
+  }
+  return dbConnectPromise
+}
 
 app.use(async (req, res, next) => {
   if (req.path === '/health') {
@@ -70,7 +78,7 @@ app.use(async (req, res, next) => {
   }
 
   try {
-    await dbReady
+    await ensureDb()
     next()
   } catch {
     res.status(503).json({ error: 'Database unavailable' })
@@ -101,7 +109,7 @@ app.use('/api/chisel', chiselRoutes)
 export default app
 
 if (!process.env.VERCEL) {
-  dbReady
+  ensureDb()
     .then(() => {
       const server = app.listen(port, host, () => {
         console.log(`Server running on ${host}:${port}`)
