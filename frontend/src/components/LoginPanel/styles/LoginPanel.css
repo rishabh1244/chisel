@@ -141,7 +141,7 @@
 }
 
 .login-card__demo {
-  margin-top: 12px;
+  margin: 12px 0;
   background: var(--color-gold-500);
   color: var(--color-white);
   font-weight: 800;

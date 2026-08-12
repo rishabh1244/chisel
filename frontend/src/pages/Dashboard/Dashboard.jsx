@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Inbox,
   Loader2,
+  PencilRuler,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../api/client";
@@ -16,7 +17,7 @@ import { sampleImageFor } from "../../utils/sampleImages";
 import DashboardLayout from "../../components/DashboardLayout/DashboardLayout.jsx";
 import { UploadCloud, X, ImagePlus, Plus } from "lucide-react";
 
-const tabs = ["Overview", "Issues", "Chisels", "Files", "Team", "Settings"];
+const tabs = ["Overview", "Issues", "Chisels", "Files", "Drawings", "Team", "Settings"];
 
 // ------------------------------- HELPERS ------------------------------------
 
@@ -974,6 +975,116 @@ function CreateIssueModal({ open, onClose, projectId, onCreated }) {
   );
 }
 
+// ------------------------------- DRAWINGS ------------------------------------
+
+function DrawingsPanel({ projectId }) {
+  const [blueprint, setBlueprint] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const bp = await api.getProjectBlueprint(projectId);
+        if (!cancelled) setBlueprint(bp);
+      } catch (e) {
+        if (e.status === 404) {
+          if (!cancelled) setBlueprint(null);
+        } else if (!cancelled) {
+          setError(e.message);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 size={28} className="animate-spin text-amber-500" />
+      </div>
+    );
+  }
+
+  if (blueprint?.original_image) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-slate-900">Drawings</h3>
+          <Link
+            to={`/view3d/${projectId}`}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-colors"
+          >
+            <Box size={16} />
+            View in 3D
+          </Link>
+        </div>
+        {error && (
+          <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+            {error}
+          </div>
+        )}
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <div className="rounded-lg overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center">
+            <img
+              src={blueprint.original_image}
+              alt="Project blueprint"
+              className="w-full h-auto object-contain"
+            />
+          </div>
+          <p className="mt-3 text-xs text-slate-400">
+            Uploaded{" "}
+            {blueprint.created_at
+              ? new Date(blueprint.created_at).toLocaleDateString(undefined, {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })
+              : ""}
+            {blueprint.uploaded_by?.username
+              ? ` by ${blueprint.uploaded_by.username}`
+              : ""}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <h3 className="font-semibold text-slate-900">Drawings</h3>
+      </div>
+      <div className="px-5 py-12 flex flex-col items-center justify-center text-center">
+        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+          <PencilRuler size={20} className="text-slate-400" />
+        </div>
+        <p className="text-sm font-medium text-slate-700">
+          No drawings uploaded
+        </p>
+        <p className="text-xs text-slate-400 mt-1">
+          Upload a blueprint image to see it here.
+        </p>
+        <Link
+          to={`/view3d/${projectId}`}
+          className="mt-5 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-colors"
+        >
+          <Box size={16} />
+          Open 3D Viewer to upload
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 // ------------------------------- MAIN PAGE ----------------------------------
 
 export default function Dashboard() {
@@ -1158,7 +1269,7 @@ export default function Dashboard() {
             />
 
             <div className="p-6 space-y-6">
-              {issues.length === 0 && activeTab !== "Issues" ? (
+              {issues.length === 0 && activeTab !== "Issues" && activeTab !== "Drawings" ? (
                 <EmptyState
                   title="No issues yet"
                   message="Create the first issue to start tracking problems, changes and project activity."
@@ -1198,6 +1309,8 @@ export default function Dashboard() {
                   chisels={chisels}
                   projectId={displayProject._id}
                 />
+              ) : activeTab === "Drawings" ? (
+                <DrawingsPanel projectId={displayProject._id} />
               ) : (
                 <>
                   <StatCards issues={issues} />
