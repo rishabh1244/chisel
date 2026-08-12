@@ -607,7 +607,17 @@ export default function IssueDetail() {
                   </div>
                 </article>
 
-                <CommentsSection comments={comments} loading={commentsLoading} />
+                <CommentsSection
+                  comments={comments}
+                  loading={commentsLoading}
+                  text={commentText}
+                  setText={setCommentText}
+                  submitting={commentSubmitting}
+                  error={commentError}
+                  onAddComment={handleAddComment}
+                  onDeleteComment={handleDeleteComment}
+                  currentUser={currentUser}
+                />
                 </div>
               </div>
 
