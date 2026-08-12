@@ -134,6 +134,11 @@ const IMAGES = [
   'https://i.imgur.com/vG5qvL0.jpg',
   'https://i.imgur.com/J3qWke0.jpg',
   'https://i.imgur.com/P6qLcf1.jpg',
+  'https://5.imimg.com/data5/LI/DJ/MY-8327537/random-block-construction-500x500.jpg',
+  'https://plus.unsplash.com/premium_photo-1681989486976-9ec9d2eac57a?fm=jpg&q=60&w=3000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8Y29uc3RydWN0aW9ufGVufDB8fDB8fHww',
+  'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSW9MPebFO-rSROnFJY8om6Za7zkdUTK7Vg8nZ49oyFeML1QNDyeg9jryII&s=10',
+  'https://www.shutterstock.com/shutterstock/photos/56915494/display_1500/stock-photo-a-random-building-under-construction-56915494.jpg',
+  'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7x10ttA2I2kTietWbdyLmJfwFp6I5Kqav8G_zQQBUARU3cS9vFiJFU-qY&s=10',
 ]
 
 const ISSUE_STATUSES = ['OPEN', 'IN_PROGRESS', 'RESOLVED'] as const
@@ -239,7 +244,7 @@ async function main() {
           issue_id: issue._id,
           created_by: author._id,
           content: pick(COMMENTS_POOL),
-          media_links: [],
+          media_links: Math.random() < 0.6 ? [pick(IMAGES)] : [],
           created_at: createdAt,
           updated_at: createdAt,
         })
