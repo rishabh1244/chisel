@@ -101,10 +101,9 @@ function LoginPanel({ mode = 'login', standalone = false }) {
         </button>
         <button
           type="button"
-          className="btn btn--ghost btn--block"
+          className="btn login-card__demo btn--block"
           onClick={handleDemo}
           disabled={loading}
-          style={{ marginTop: '12px' }}
         >
           Continue with Demo Account
         </button>
