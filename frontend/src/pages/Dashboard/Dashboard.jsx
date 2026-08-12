@@ -1234,7 +1234,7 @@ export default function Dashboard() {
     return assignee && String(assignee) === String(user?._id);
   });
 
-  if (loading || issuesLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <Loader2 size={32} className="animate-spin text-amber-500" />
@@ -1293,7 +1293,11 @@ export default function Dashboard() {
                       New Issue
                     </button>
                   </div>
-                  {issues.length === 0 ? (
+                  {issuesLoading ? (
+                    <div className="flex items-center justify-center py-24">
+                      <Loader2 size={28} className="animate-spin text-amber-500" />
+                    </div>
+                  ) : issues.length === 0 ? (
                     <EmptyState
                       title="No issues yet"
                       message="Create the first issue to start tracking problems, changes and project activity."
