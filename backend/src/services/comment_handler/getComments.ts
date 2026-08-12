@@ -12,6 +12,7 @@ export async function getCommentsForIssue(issueId: Types.ObjectId) {
     created_by: comment.created_by,
     content: comment.content,
     media_links: comment.media_links,
+    closes_issue: comment.closes_issue,
     created_at: comment.created_at,
     updated_at: comment.updated_at,
   }))

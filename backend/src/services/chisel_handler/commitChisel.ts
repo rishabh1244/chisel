@@ -1,5 +1,6 @@
 import Chisel from '../../models/Chisel'
 import Issue from '../../models/Issue'
+import Comment from '../../models/Comment'
 import { Types } from 'mongoose'
 
 interface CommitChiselParams {
@@ -24,10 +25,19 @@ export async function commitChisel(params: CommitChiselParams) {
     return existing
   }
 
+  const closingComment = await Comment.findOne({
+    issue_id: issue._id,
+    closes_issue: true,
+  })
+
+  const commitAuthor = closingComment
+    ? closingComment.created_by
+    : params.commitAuthor
+
   const chisel = await Chisel.create({
     project_id: params.projectId,
     issue_id: issue._id,
-    commit_author: params.commitAuthor,
+    commit_author: commitAuthor,
     title: issue.title,
     description: issue.description,
     media_links: issue.image_link ? [issue.image_link] : [],

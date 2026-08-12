@@ -1,9 +1,11 @@
 import { Router, Request, Response } from 'express'
 import { authenticate } from '../middleware/auth'
+import { authorizeManager } from '../middleware/authorizeManager'
 import { createComment } from '../services/comment_handler/createComment'
 import { editComment } from '../services/comment_handler/editComment'
 import { deleteComment } from '../services/comment_handler/deleteComment'
 import { getCommentsForIssue } from '../services/comment_handler/getComments'
+import { closeIssueWithComment } from '../services/comment_handler/closeIssue'
 import { Types } from 'mongoose'
 
 const router = Router()
@@ -83,6 +85,26 @@ router.delete('/deleteComment', async (req: Request, res: Response) => {
     res.json(result)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to delete comment'
+    res.status(400).json({ error: message })
+  }
+})
+
+router.post('/closeIssue', authorizeManager, async (req: Request, res: Response) => {
+  try {
+    const { commentId } = req.body
+
+    if (!commentId) {
+      res.status(400).json({ error: 'commentId is required' })
+      return
+    }
+
+    const comment = await closeIssueWithComment({
+      commentId: new Types.ObjectId(commentId),
+    })
+
+    res.json(comment)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to close issue'
     res.status(400).json({ error: message })
   }
 })

@@ -119,6 +119,11 @@ export const api = {
     request('/api/comments/editComment', { method: 'POST', body: data }),
   deleteComment: (commentId) =>
     request('/api/comments/deleteComment', { method: 'DELETE', body: { commentId } }),
+  closeIssueWithComment: (projectId, commentId) =>
+    request('/api/comments/closeIssue', {
+      method: 'POST',
+      body: { projectId, commentId },
+    }),
 
   // Chisels
   getProjectChisels: (projectId) => request(`/api/chisel/project/${projectId}`),

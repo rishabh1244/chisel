@@ -123,12 +123,17 @@ function CommentsSection({
   onAddComment,
   onDeleteComment,
   currentUser,
+  isManager,
+  onCloseIssue,
+  closing,
 }) {
   const isOwnComment = (comment) => {
     const myId = String(currentUser?._id || "");
     const authorId = String(comment.created_by?._id ?? (comment.created_by || ""));
     return Boolean(myId) && myId === authorId;
   };
+
+  const closingCommentId = comments.find((c) => c.closes_issue)?._id;
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
@@ -230,6 +235,28 @@ function CommentsSection({
                       ))}
                     </div>
                   )}
+                  {isManager &&
+                    (String(comment._id) === String(closingCommentId) ? (
+                      <span className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-100 text-green-700 text-xs font-medium">
+                        <CheckCircle2 size={14} />
+                        Closed this issue
+                      </span>
+                    ) : !closingCommentId ? (
+                      <div className="mt-3">
+                        <button
+                          onClick={() => onCloseIssue(comment._id)}
+                          disabled={Boolean(closing)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-green-300 text-green-700 text-xs font-medium hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {closing === String(comment._id) ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <CheckCircle2 size={14} />
+                          )}
+                          Closes the issue
+                        </button>
+                      </div>
+                    ) : null)}
                 </div>
               </div>
             ))}
@@ -256,6 +283,7 @@ export default function IssueDetail() {
   const [commentError, setCommentError] = useState("");
   const [actionError, setActionError] = useState("");
   const [error, setError] = useState("");
+  const [closingComment, setClosingComment] = useState(null);
 
   const currentUser = JSON.parse(localStorage.getItem("chisel_user") || "null");
 
@@ -400,6 +428,22 @@ export default function IssueDetail() {
       );
     } catch (err) {
       setCommentError(err.message);
+    }
+  };
+
+  const handleCloseIssue = async (commentId) => {
+    if (!projectId) return;
+    setCommentError("");
+    setClosingComment(commentId);
+    try {
+      await api.closeIssueWithComment(projectId, commentId);
+      const data = await api.getIssueComments(issueId);
+      setComments(Array.isArray(data) ? data : []);
+      setIssue((prev) => ({ ...prev, status: "RESOLVED" }));
+    } catch (err) {
+      setCommentError(err.message);
+    } finally {
+      setClosingComment(null);
     }
   };
 
@@ -617,6 +661,9 @@ export default function IssueDetail() {
                   onAddComment={handleAddComment}
                   onDeleteComment={handleDeleteComment}
                   currentUser={currentUser}
+                  isManager={isManager}
+                  onCloseIssue={handleCloseIssue}
+                  closing={closingComment}
                 />
                 </div>
               </div>
